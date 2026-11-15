@@ -95,3 +95,21 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 
 30. [**Multi-Region Geo-Routing & Replica Steering (`geo`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/geo-routing.md)
     - Dynamic geo-steering routing traffic to regional database read-replicas and nearest edge datacenters.
+
+31. [**Native Distributed Locks & Atomic Mutex (`lock`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/distributed-locks.md)
+    - Concurrency serialization, race condition defense, and deadlock-safe auto-releasing mutexes.
+
+32. [**Tiered Rate Limiting & Token Cluster (`throttle`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/tiered-throttling.md)
+    - Multi-tenant token bucket rate limiter with cost weighting, dynamic tier resolution, and standard headers.
+
+33. [**Cryptographic Request Attestation (`verify`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/cryptographic-verification.md)
+    - Constant-time HMAC-SHA256 request signing, payload hash verification, and anti-replay timestamp drift defense.
+
+34. [**Schema-Driven Synthetic Mock Engine (`mock`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/synthetic-mock-engine.md)
+    - TypeBox contract-driven synthetic data generation with seeded PRNG, field heuristics, and instant mock route handlers.
+
+35. [**Dynamic Zero-Downtime Hot-Patching (`patch`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/zero-downtime-hotpatching.md)
+    - In-memory live route replacement without server restarts, breaking WebSockets, or connection drops, plus instant rollback.
+
+36. [**Native WebAssembly Isolated Sandbox (`wasm`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/wasm-sandboxing.md)
+    - Secure W3C WebAssembly runner with memory bounding, timeout deadlines, and safe guest execution across all runtimes.

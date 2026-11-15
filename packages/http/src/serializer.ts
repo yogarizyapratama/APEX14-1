@@ -183,13 +183,19 @@ export function serializeResponse(value: any, ctx: ApexRequestContext): Response
   });
 }
 
-export function serializeErrorResponse(error: any): Response {
+export function serializeErrorResponse(error: any, ctx?: ApexRequestContext): Response {
+  const headers = ctx ? new Headers(ctx.responseHeaders) : new Headers();
+  headers.set("content-type", "application/json; charset=utf-8");
+  if (ctx) {
+    for (const c of ctx.getSetCookieHeaders()) {
+      headers.append("set-cookie", c);
+    }
+  }
+
   if (error instanceof ApexError) {
     return new Response(JSON.stringify(error.toJSON()), {
       status: error.status,
-      headers: {
-        "content-type": "application/json; charset=utf-8"
-      }
+      headers
     });
   }
 
@@ -204,8 +210,6 @@ export function serializeErrorResponse(error: any): Response {
 
   return new Response(JSON.stringify(body), {
     status: 500,
-    headers: {
-      "content-type": "application/json; charset=utf-8"
-    }
+    headers
   });
 }

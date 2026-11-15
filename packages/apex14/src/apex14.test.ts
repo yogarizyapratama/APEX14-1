@@ -11,7 +11,13 @@ import {
   Type,
   testRequest,
   createScope,
-  withScope
+  withScope,
+  lock,
+  throttle,
+  verify,
+  mock,
+  patch,
+  wasm
 } from "./index.js";
 
 describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () => {
@@ -142,5 +148,21 @@ describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () =
     expect(await res.json()).toEqual({ status: "healthy", framework: "APEX14" });
 
     await serverHandle.close();
+  });
+
+  it("exports Quantum-Leap primitives directly from apex14 umbrella", async () => {
+    expect(typeof lock).toBe("function");
+    expect(typeof throttle).toBe("function");
+    expect(typeof verify.signedRequest).toBe("function");
+    expect(typeof mock.one).toBe("function");
+    expect(typeof patch.route).toBe("function");
+    expect(typeof wasm.load).toBe("function");
+
+    // Quick sanity checks
+    const val = await lock("sanity", async () => "locked");
+    expect(val).toBe("locked");
+
+    const dummy = mock.one(Type.Object({ name: Type.String() }), { seed: 123 });
+    expect(typeof dummy.name).toBe("string");
   });
 });

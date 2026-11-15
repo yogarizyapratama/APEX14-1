@@ -518,6 +518,86 @@ route("/feed", {
 });
 ```
 
+### 13. Native Distributed Locks & Atomic Mutex (`lock`)
+```ts
+import { lock, route } from "apex14";
+
+route("/checkout", async (ctx) => {
+  return await lock(`account:${ctx.body.accountId}`, { ttlMs: 5000 }, async () => {
+    // 100% race-condition free bank balance decrement or inventory deduction
+    return await processPayment(ctx.body);
+  });
+});
+```
+
+### 14. Tiered Rate Limiting & Token Cluster (`throttle`)
+```ts
+import { throttle, route } from "apex14";
+
+const limiter = throttle({
+  tiers: {
+    free: { limit: 100, window: "1m" },
+    pro: { limit: 1000, window: "1m" }
+  },
+  resolveTier: (ctx) => ctx.headers["x-tier"] || "free",
+  key: (ctx) => ctx.headers["x-api-key"] || ctx.ip
+});
+
+route("/search", handleSearch, { middleware: [limiter] });
+```
+
+### 15. Cryptographic Request Attestation (`verify`)
+```ts
+import { verify, route } from "apex14";
+
+route("/webhooks/settlement", handleSettlement, {
+  method: "POST",
+  middleware: [
+    verify.signedRequest({
+      secretOrKey: process.env.PARTNER_SECRET!,
+      maxDriftSeconds: 60
+    })
+  ]
+});
+```
+
+### 16. Schema-Driven Synthetic Mock Engine (`mock`)
+```ts
+import { mock, route, Type } from "apex14";
+
+const UserContract = Type.Object({
+  id: Type.String(),
+  email: Type.String({ format: "email" }),
+  name: Type.String(),
+  age: Type.Integer({ minimum: 18, maximum: 65 })
+});
+
+// Serve instant realistic synthetic data matching schema with 0 backend logic
+route("/api/users/mock", mock.fn(UserContract, { seed: 42 }));
+```
+
+### 17. Dynamic Zero-Downtime Hot-Patching (`patch`)
+```ts
+import { patch, route } from "apex14";
+
+// Hot-swap route logic live in-memory without restarting server or dropping WebSockets
+patch.route("/api/orders/discount", (ctx) => ({ rate: 0.25, event: "FLASH_SALE" }));
+
+// Instant rollback on demand
+patch.rollback("/api/orders/discount");
+```
+
+### 18. Native WebAssembly Isolated Sandbox (`wasm`)
+```ts
+import { wasm, route } from "apex14";
+
+const sandbox = await wasm.load(wasmBuffer, { timeoutMs: 2000 });
+
+route("/api/calc", async ({ body }) => {
+  return { result: await sandbox.run("calculate", body.a, body.b) };
+});
+```
+
 ---
 
 ## Performance Benchmarks

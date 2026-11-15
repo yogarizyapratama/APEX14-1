@@ -28,6 +28,12 @@ import {
   event,
   chaos,
   geo,
+  lock,
+  throttle,
+  verify,
+  mock,
+  patch,
+  wasm,
   exportMcpTools,
   getOpenApiSpec,
   enableDocs,
@@ -955,6 +961,269 @@ describe("@apex14/core — Direct Function API", () => {
       const fbRes = await scope.handle(new Request("http://localhost/api/cdn-data"));
       const fbData = await fbRes.json();
       expect(fbData.datacenter).toBe("global-primary");
+    });
+  });
+
+  describe("Native Distributed Lock & Atomic Mutex (lock)", () => {
+    it("serializes concurrent access to critical section and prevents race conditions", async () => {
+      let balance = 100;
+      const results: number[] = [];
+
+      // Concurrently run 3 bank withdrawals
+      const withdraw = async (amount: number) => {
+        return await lock("account_123", { ttlMs: 2000, timeoutMs: 1500 }, async () => {
+          const current = balance;
+          await new Promise((r) => setTimeout(r, 20));
+          balance = current - amount;
+          results.push(balance);
+          return balance;
+        });
+      };
+
+      await Promise.all([withdraw(20), withdraw(30), withdraw(10)]);
+      expect(balance).toBe(40);
+      expect(results).toEqual([80, 50, 40]);
+    });
+
+    it("throws LockAcquisitionError on timeout when resource is blocked", async () => {
+      // Hold lock
+      const p1 = lock("resource_locked", { ttlMs: 3000 }, async () => {
+        await new Promise((r) => setTimeout(r, 200));
+      });
+
+      // Try acquiring with short timeout
+      await expect(
+        lock("resource_locked", { timeoutMs: 30, retryDelayMs: 10 }, async () => {
+          return "won't run";
+        })
+      ).rejects.toThrow("Failed to acquire lock");
+
+      await p1;
+    });
+  });
+
+  describe("Tiered Rate Limiting & Token Cluster (throttle)", () => {
+    it("enforces tier-based limits and emits standard rate-limit headers", async () => {
+      const scope = createScope();
+
+      const rateLimiter = throttle({
+        tiers: {
+          free: { limit: 2, window: "10s" },
+          pro: { limit: 5, window: "10s" }
+        },
+        resolveTier: (ctx) => ctx.headers["x-tier"] || "free",
+        key: (ctx) => ctx.headers["x-api-key"] || "anon"
+      });
+
+      scope.route("/api/rate-tested", (ctx) => ({ ok: true }), {
+        middleware: [rateLimiter]
+      });
+
+      // 1. Free tier first request (limit 2)
+      const res1 = await scope.handle(
+        new Request("http://localhost/api/rate-tested", {
+          headers: { "x-api-key": "user_a", "x-tier": "free" }
+        })
+      );
+      expect(res1.status).toBe(200);
+      expect(res1.headers.get("x-ratelimit-limit")).toBe("2");
+      expect(res1.headers.get("x-ratelimit-remaining")).toBe("1");
+
+      // 2. Free tier second request
+      const res2 = await scope.handle(
+        new Request("http://localhost/api/rate-tested", {
+          headers: { "x-api-key": "user_a", "x-tier": "free" }
+        })
+      );
+      expect(res2.status).toBe(200);
+      expect(res2.headers.get("x-ratelimit-remaining")).toBe("0");
+
+      // 3. Free tier 3rd request should be blocked (429)
+      const res3 = await scope.handle(
+        new Request("http://localhost/api/rate-tested", {
+          headers: { "x-api-key": "user_a", "x-tier": "free" }
+        })
+      );
+      expect(res3.status).toBe(429);
+      expect(res3.headers.has("retry-after")).toBe(true);
+
+      // 4. Pro user is isolated and can make requests
+      const proRes = await scope.handle(
+        new Request("http://localhost/api/rate-tested", {
+          headers: { "x-api-key": "user_pro", "x-tier": "pro" }
+        })
+      );
+      expect(proRes.status).toBe(200);
+      expect(proRes.headers.get("x-ratelimit-limit")).toBe("5");
+    });
+  });
+
+  describe("Cryptographic Request Attestation (verify)", () => {
+    it("validates authentic HMAC-SHA256 request signatures and rejects tampered bodies", async () => {
+      const scope = createScope();
+      const SECRET = "secret_webhook_signature_key_999";
+
+      scope.route("/api/secure-webhook", (ctx) => ({ processed: true, body: ctx.body }), {
+        method: "POST",
+        middleware: [
+          verify.signedRequest({
+            secretOrKey: SECRET,
+            maxDriftSeconds: 60
+          })
+        ]
+      });
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const payload = { event: "order.paid", amount: 4900 };
+
+      const validSig = verify.sign(
+        {
+          method: "POST",
+          pathname: "/api/secure-webhook",
+          timestamp,
+          body: payload
+        },
+        SECRET
+      );
+
+      // 1. Valid signed request
+      const validRes = await scope.handle(
+        new Request("http://localhost/api/secure-webhook", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-signature": validSig,
+            "x-timestamp": String(timestamp)
+          },
+          body: JSON.stringify(payload)
+        })
+      );
+      expect(validRes.status).toBe(200);
+      const data = await validRes.json();
+      expect(data.processed).toBe(true);
+
+      // 2. Tampered body with same signature: should fail 401
+      const tamperedRes = await scope.handle(
+        new Request("http://localhost/api/secure-webhook", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-signature": validSig,
+            "x-timestamp": String(timestamp)
+          },
+          body: JSON.stringify({ event: "order.paid", amount: 1 }) // Tampered amount
+        })
+      );
+      expect(tamperedRes.status).toBe(401);
+
+      // 3. Expired timestamp (> 60s)
+      const expiredRes = await scope.handle(
+        new Request("http://localhost/api/secure-webhook", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-signature": validSig,
+            "x-timestamp": String(timestamp - 120)
+          },
+          body: JSON.stringify(payload)
+        })
+      );
+      expect(expiredRes.status).toBe(401);
+    });
+  });
+
+  describe("Schema-Driven Synthetic Mock Engine (mock)", () => {
+    it("generates type-safe realistic data from TypeBox schemas with seed reproducibility", () => {
+      const UserSchema = Type.Object({
+        id: Type.String(),
+        email: Type.String({ format: "email" }),
+        name: Type.String(),
+        age: Type.Integer({ minimum: 18, maximum: 65 }),
+        active: Type.Boolean(),
+        role: Type.Union([Type.Literal("admin"), Type.Literal("user"), Type.Literal("guest")])
+      });
+
+      // Seeded deterministic generation
+      const mock1 = mock.one(UserSchema, { seed: 42 });
+      const mock2 = mock.one(UserSchema, { seed: 42 });
+
+      expect(mock1).toEqual(mock2);
+      expect(mock1.email).toContain("@example.com");
+      expect(mock1.age).toBeGreaterThanOrEqual(18);
+      expect(mock1.age).toBeLessThanOrEqual(65);
+      expect(["admin", "user", "guest"]).toContain(mock1.role);
+
+      // Multiple generation
+      const users = mock.many(UserSchema, 5, { seed: 100 });
+      expect(users.length).toBe(5);
+
+      // Overrides
+      const customUser = mock.one(UserSchema, {
+        overrides: { email: "fixed@custom.com", role: "admin" }
+      });
+      expect(customUser.email).toBe("fixed@custom.com");
+      expect(customUser.role).toBe("admin");
+    });
+
+    it("can serve synthetic mock responses directly via mock.fn in routes", async () => {
+      const scope = createScope();
+      const ProductSchema = Type.Object({
+        id: Type.String(),
+        name: Type.String(),
+        price: Type.Number({ minimum: 10, maximum: 500 })
+      });
+
+      scope.route("/api/products/mock", mock.fn(ProductSchema, { seed: 777 }));
+
+      const res = await scope.handle(new Request("http://localhost/api/products/mock"));
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.price).toBeGreaterThanOrEqual(10);
+      expect(data.price).toBeLessThanOrEqual(500);
+    });
+  });
+
+  describe("Dynamic Zero-Downtime Hot-Patching (patch)", () => {
+    it("hot-patches routes in-memory and supports rollback", async () => {
+      const scope = createScope();
+
+      // Original route
+      scope.route("/api/status", () => ({ version: "v1.0.0", message: "Initial" }));
+
+      const res1 = await scope.handle(new Request("http://localhost/api/status"));
+      const data1 = await res1.json();
+      expect(data1.version).toBe("v1.0.0");
+
+      // Hot-patch route at runtime without restarting server
+      patch.route(scope, "/api/status", () => ({ version: "v1.1.0", message: "Patched live!" }));
+
+      const res2 = await scope.handle(new Request("http://localhost/api/status"));
+      const data2 = await res2.json();
+      expect(data2.version).toBe("v1.1.0");
+      expect(data2.message).toBe("Patched live!");
+
+      // Rollback patch
+      const rolledBack = patch.rollback("/api/status", scope);
+      expect(rolledBack).toBe(true);
+
+      const res3 = await scope.handle(new Request("http://localhost/api/status"));
+      const data3 = await res3.json();
+      expect(data3.version).toBe("v1.0.0");
+      expect(data3.message).toBe("Initial");
+    });
+  });
+
+  describe("Native WebAssembly Isolated Sandbox (wasm)", () => {
+    it("loads and executes WebAssembly bytecode securely", async () => {
+      const sandbox = await wasm.load(wasm.sampleAddBytes, { timeoutMs: 2000 });
+
+      expect(typeof sandbox.exports.add).toBe("function");
+
+      const sum = await sandbox.run<number>("add", 40, 2);
+      expect(sum).toBe(42);
+
+      const sum2 = await sandbox.run<number>("add", -10, 25);
+      expect(sum2).toBe(15);
     });
   });
 });

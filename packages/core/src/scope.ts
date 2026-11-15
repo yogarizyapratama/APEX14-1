@@ -367,7 +367,7 @@ export class ApexScope {
       if (ctx) {
         heal.capture(err, ctx);
       }
-      const errRes = serializeErrorResponse(err);
+      const errRes = serializeErrorResponse(err, ctx);
       return this.applyCors(errRes, request);
     }
   }

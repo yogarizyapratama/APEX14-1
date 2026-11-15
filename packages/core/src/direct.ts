@@ -86,6 +86,12 @@ export { audit, ApexAuditEngine, type AuditRecord } from "./audit.js";
 export { event, ApexEvent, type OutboxEvent, type EventHandler } from "./event.js";
 export { chaos, ApexChaosEngine, type ChaosConfig } from "./chaos.js";
 export { geo, ApexGeoEngine, type GeoSteerOptions } from "./geo.js";
+export { lock, lockEngine, ApexLockEngine, LockAcquisitionError, type LockOptions } from "./lock.js";
+export { throttle, ApexThrottleInstance, type ThrottleConfig, type ThrottleTier } from "./throttle.js";
+export { verify, ApexVerifyEngine, type VerifySignedOptions } from "./verify.js";
+export { mock, ApexMockEngine, type MockOptions } from "./mock.js";
+export { patch, ApexPatchEngine, type PatchRecord, type PatchListener } from "./patch.js";
+export { wasm, ApexWasmEngine, ApexWasmInstance, WasmExecutionError, type WasmOptions } from "./wasm.js";
 
 export function group(
   prefix: string,
