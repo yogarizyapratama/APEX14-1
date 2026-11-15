@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Enterprise security engine (JWT, Password hashing, Rate Limiter, SSRF Guard, CORS) for APEX14",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

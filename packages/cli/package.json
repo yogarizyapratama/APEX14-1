@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Developer productivity CLI engine for APEX14",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "apex14": "./dist/bin.js"
   },

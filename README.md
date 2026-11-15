@@ -128,7 +128,44 @@ route("/users", {
 }, { body: UserSchema });
 ```
 
-### 4. Zero-Boilerplate CRUD Resources
+### 4. Full ORM Database Engine (`db("table")`)
+
+APEX14 includes an ultra-intuitive, fluent ORM query builder:
+
+```ts
+import { route, db } from "apex14";
+
+// 1. Create record
+const user = await db("users").create({
+  name: "Alex",
+  email: "alex@example.com",
+  role: "admin"
+});
+
+// 2. Find many with filtering & sorting
+const admins = await db("users").findMany({
+  where: { role: "admin" },
+  orderBy: { created_at: "desc" },
+  limit: 20
+});
+
+// 3. Find single record by ID
+const profile = await db("users").findById(42);
+
+// 4. Fluent chain syntax
+const active = await db("users")
+  .where("role", "member")
+  .where("age", ">=", 18)
+  .orderBy("created_at", "DESC")
+  .limit(10)
+  .get();
+
+// 5. Update & Delete
+await db("users").where({ id: 42 }).update({ name: "Alex Updated" });
+await db("users").deleteById(42);
+```
+
+### 5. Zero-Boilerplate CRUD Resources
 
 Generate standard RESTful CRUD endpoints (`list`, `read`, `create`, `update`, `delete`) tied to your database table:
 

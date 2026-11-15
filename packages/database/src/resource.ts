@@ -40,7 +40,7 @@ export function resource(name: string, options: ResourceOptions = {}): void {
   // 1. LIST: GET /name
   if (operations.includes("list")) {
     methodMap["GET"] = async (ctx: ApexRequestContext) => {
-      const client = db(dbName);
+      const client = db.client(dbName);
       const page = Math.max(1, parseInt(String(ctx.query.page || "1"), 10) || 1);
       const requestedLimit = parseInt(String(ctx.query.limit || String(defaultLimit)), 10) || defaultLimit;
       const limit = Math.min(Math.max(1, requestedLimit), maxLimit);
@@ -77,7 +77,7 @@ export function resource(name: string, options: ResourceOptions = {}): void {
   // 2. CREATE: POST /name
   if (operations.includes("create")) {
     methodMap["POST"] = async (ctx: ApexRequestContext) => {
-      const client = db(dbName);
+      const client = db.client(dbName);
       const body = ctx.body;
       if (!body || typeof body !== "object") {
         throw new ValidationError("Request body is required for creation");
@@ -121,7 +121,7 @@ export function resource(name: string, options: ResourceOptions = {}): void {
 
   if (operations.includes("read")) {
     itemMap["GET"] = async (ctx: ApexRequestContext) => {
-      const client = db(dbName);
+      const client = db.client(dbName);
       const id = ctx.params.id;
       const whereClause = options.softDelete
         ? `WHERE id = ? AND deleted_at IS NULL`
@@ -146,7 +146,7 @@ export function resource(name: string, options: ResourceOptions = {}): void {
 
   if (operations.includes("update")) {
     itemMap["PUT"] = async (ctx: ApexRequestContext) => {
-      const client = db(dbName);
+      const client = db.client(dbName);
       const id = ctx.params.id;
       const body = ctx.body;
 
@@ -185,7 +185,7 @@ export function resource(name: string, options: ResourceOptions = {}): void {
 
   if (operations.includes("delete")) {
     itemMap["DELETE"] = async (ctx: ApexRequestContext) => {
-      const client = db(dbName);
+      const client = db.client(dbName);
       const id = ctx.params.id;
 
       if (options.softDelete) {
