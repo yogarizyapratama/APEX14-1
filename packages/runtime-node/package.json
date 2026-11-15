@@ -1,6 +1,6 @@
 {
   "name": "@apex14/runtime-node",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node.js HTTP runtime adapter for APEX14",
   "type": "module",
   "files": [
@@ -16,8 +16,8 @@
     }
   },
   "dependencies": {
-    "@apex14/core": "workspace:*",
-    "@apex14/http": "workspace:*",
+    "@apex14/core": "^0.1.1",
+    "@apex14/http": "^0.1.1",
     "ws": "^8.23.0"
   },
   "scripts": {
