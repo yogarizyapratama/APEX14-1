@@ -1,6 +1,6 @@
 {
   "name": "@apex14/client",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "End-to-end type-safe RPC client for APEX14 APIs",
   "type": "module",
   "files": [

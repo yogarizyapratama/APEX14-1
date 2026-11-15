@@ -1,6 +1,6 @@
 {
   "name": "@apex14/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Developer productivity CLI engine for APEX14",
   "type": "module",
   "files": [
@@ -19,8 +19,8 @@
     }
   },
   "dependencies": {
-    "@apex14/core": "^0.1.1",
-    "@apex14/router": "^0.1.1"
+    "@apex14/core": "^0.1.2",
+    "@apex14/router": "^0.1.2"
   },
   "scripts": {
     "build": "tsc",

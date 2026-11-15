@@ -1,6 +1,6 @@
 {
   "name": "@apex14/database",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Unified database abstraction, embedded SQLite, and CRUD resource engine for APEX14",
   "type": "module",
   "files": [
@@ -16,9 +16,9 @@
     }
   },
   "dependencies": {
-    "@apex14/core": "^0.1.1",
-    "@apex14/http": "^0.1.1",
-    "@apex14/validation": "^0.1.1"
+    "@apex14/core": "^0.1.2",
+    "@apex14/http": "^0.1.2",
+    "@apex14/validation": "^0.1.2"
   },
   "scripts": {
     "build": "tsc",

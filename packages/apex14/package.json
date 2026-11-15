@@ -1,6 +1,6 @@
 {
   "name": "apex14",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "APEX14 — The Intelligent API Framework. Direct Function API, TypeScript-first, Multi-Runtime.",
   "type": "module",
   "files": [
@@ -37,16 +37,16 @@
     }
   },
   "dependencies": {
-    "@apex14/core": "^0.1.1",
-    "@apex14/router": "^0.1.1",
-    "@apex14/http": "^0.1.1",
-    "@apex14/validation": "^0.1.1",
-    "@apex14/security": "^0.1.1",
-    "@apex14/storage": "^0.1.1",
-    "@apex14/database": "^0.1.1",
-    "@apex14/client": "^0.1.1",
-    "@apex14/runtime-node": "^0.1.1",
-    "@apex14/runtime-bun": "^0.1.1"
+    "@apex14/core": "^0.1.2",
+    "@apex14/router": "^0.1.2",
+    "@apex14/http": "^0.1.2",
+    "@apex14/validation": "^0.1.2",
+    "@apex14/security": "^0.1.2",
+    "@apex14/storage": "^0.1.2",
+    "@apex14/database": "^0.1.2",
+    "@apex14/client": "^0.1.2",
+    "@apex14/runtime-node": "^0.1.2",
+    "@apex14/runtime-bun": "^0.1.2"
   },
   "scripts": {
     "build": "tsc",
