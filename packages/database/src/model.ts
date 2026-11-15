@@ -6,6 +6,8 @@ export interface ModelOptions {
   timestamps?: boolean;
   softDelete?: boolean;
   client?: string;
+  audit?: boolean;
+  tenant?: boolean;
 }
 
 export function typeBoxToSqlType(propertySchema: any): string {
@@ -22,6 +24,23 @@ function notifyMutation(tableName: string, action: string, data?: any): void {
   if (typeof notify === "function") {
     try {
       notify(tableName, { action, data });
+    } catch {
+      // Safe ignore
+    }
+  }
+}
+
+function auditRecordChange(
+  table: string,
+  recordId: string | number,
+  action: "create" | "update" | "delete",
+  before?: any,
+  after?: any
+): void {
+  const audit = (globalThis as any).__apex14_audit_engine;
+  if (audit && typeof audit.recordChange === "function") {
+    try {
+      audit.recordChange({ table, recordId, action, before, after });
     } catch {
       // Safe ignore
     }
@@ -69,6 +88,11 @@ export class Model<T = any> {
           columns["deleted_at"] = "DATETIME DEFAULT NULL";
         }
 
+        const tenantEngine = (globalThis as any).__apex14_tenant_engine;
+        if (tenantEngine && this.options.tenant !== false) {
+          columns[tenantEngine.getColumn()] = "TEXT";
+        }
+
         await db.schema.createTableIfNotExists(this.tableName, columns);
 
         // Non-destructive Schema Drift Auto-Migration
@@ -96,6 +120,13 @@ export class Model<T = any> {
     const q = db<T>(this.tableName);
     if (this.options.softDelete) {
       q.where("deleted_at", "IS NULL", null);
+    }
+    const tenantEngine = (globalThis as any).__apex14_tenant_engine;
+    if (tenantEngine && this.options.tenant !== false) {
+      const activeTenant = tenantEngine.getCurrentId();
+      if (activeTenant) {
+        q.where(tenantEngine.getColumn(), activeTenant);
+      }
     }
     return q;
   }
@@ -138,6 +169,13 @@ export class Model<T = any> {
       if (!payload.created_at) payload.created_at = now;
       if (!payload.updated_at) payload.updated_at = now;
     }
+    const tenantEngine = (globalThis as any).__apex14_tenant_engine;
+    if (tenantEngine && this.options.tenant !== false) {
+      const activeTenant = tenantEngine.getCurrentId();
+      if (activeTenant && !payload[tenantEngine.getColumn()]) {
+        payload[tenantEngine.getColumn()] = activeTenant;
+      }
+    }
     const created = await db<T>(this.tableName).create(payload);
     let result = created;
     if ((created as any).id !== undefined) {
@@ -145,6 +183,9 @@ export class Model<T = any> {
       if (full) result = full;
     }
     notifyMutation(this.tableName, "create", result);
+    if (this.options.audit) {
+      auditRecordChange(this.tableName, (result as any).id || 1, "create", undefined, result);
+    }
     return result;
   }
 
@@ -172,6 +213,15 @@ export class Model<T = any> {
       updated = await this.query().where(idOrWhere).first();
     }
     notifyMutation(this.tableName, "update", updated);
+    if (this.options.audit) {
+      auditRecordChange(
+        this.tableName,
+        typeof idOrWhere === "number" || typeof idOrWhere === "string" ? idOrWhere : (updated as any)?.id || 1,
+        "update",
+        undefined,
+        updated
+      );
+    }
     return updated;
   }
 
@@ -195,8 +245,23 @@ export class Model<T = any> {
     }
     if (success) {
       notifyMutation(this.tableName, "delete", { id: idOrWhere });
+      if (this.options.audit) {
+        auditRecordChange(
+          this.tableName,
+          typeof idOrWhere === "number" || typeof idOrWhere === "string" ? idOrWhere : 1,
+          "delete"
+        );
+      }
     }
     return success;
+  }
+
+  public asOf(timestamp: string | Date): { findById: (id: string | number) => any; find: (id: string | number) => any } {
+    const auditEngine = (globalThis as any).__apex14_audit_engine;
+    return {
+      findById: (id: string | number) => (auditEngine ? auditEngine.asOf(this.tableName, id, timestamp) : null),
+      find: (id: string | number) => (auditEngine ? auditEngine.asOf(this.tableName, id, timestamp) : null)
+    };
   }
 
   public async count(where?: Record<string, any>): Promise<number> {

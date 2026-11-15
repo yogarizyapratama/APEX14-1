@@ -77,3 +77,21 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 
 24. [**Micro-Benchmarking & Performance Verification (`apex14 benchmark`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/benchmarking.md)
     - Built-in CLI micro-benchmark command measuring latency percentiles (p50, p95, p99), RPS, and memory footprint.
+
+25. [**Autonomous AI Agent Runtime (`agent`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/ai-agent-runtime.md)
+    - Zero-dependency AI agent runtime, automatic task-to-tool reflection, and SSE stream handling.
+
+26. [**Kernel-Level Row-Level Multi-Tenancy (`tenant`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/multi-tenancy.md)
+    - Transparent tenant resolution and automatic database model query scoping without manual filters.
+
+27. [**Temporal Time-Travel Data Auditing (`audit`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/audit-and-time-travel.md)
+    - Change data capture, audit history diffs, and temporal `asOf()` time-travel historical state reconstruction.
+
+28. [**Event Sourcing & Transactional Outbox Engine (`event`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/event-sourcing-outbox.md)
+    - Guaranteed at-least-once message delivery with transactional outbox queue and decoupled event subscribers.
+
+29. [**Native Chaos Engineering Simulator (`chaos`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/chaos-engineering.md)
+    - Programmatic fault injection, latency jitter, and failure rate testing directly in the framework.
+
+30. [**Multi-Region Geo-Routing & Replica Steering (`geo`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/geo-routing.md)
+    - Dynamic geo-steering routing traffic to regional database read-replicas and nearest edge datacenters.

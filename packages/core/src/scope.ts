@@ -34,6 +34,8 @@ import { createWebhookHandler, type WebhookConfig } from "./webhook.js";
 import { mountStudio, type StudioOptions } from "./studio.js";
 import { cache, type CacheOptions } from "./cache.js";
 import { heal } from "./heal.js";
+import { tenant } from "./tenant.js";
+import { chaos } from "./chaos.js";
 
 interface GroupContext {
   prefix: string;
@@ -342,8 +344,12 @@ export class ApexScope {
       }
 
       // 3. Compose middleware pipeline
-      // Pipeline: globalMiddleware -> routeMiddleware -> handler
-      const chain: Middleware[] = [...this.globalMiddleware, ...match.middleware];
+      // Pipeline: kernelMiddleware -> globalMiddleware -> routeMiddleware -> handler
+      const kernelMiddleware: Middleware[] = [tenant.middleware()];
+      if (chaos.isEnabled()) {
+        kernelMiddleware.push(chaos.middleware());
+      }
+      const chain: Middleware[] = [...kernelMiddleware, ...this.globalMiddleware, ...match.middleware];
 
       let idx = 0;
       const next = async (): Promise<any> => {

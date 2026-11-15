@@ -22,6 +22,12 @@ import {
   live,
   heal,
   contract,
+  agent,
+  tenant,
+  audit,
+  event,
+  chaos,
+  geo,
   exportMcpTools,
   getOpenApiSpec,
   enableDocs,
@@ -753,6 +759,202 @@ describe("@apex14/core — Direct Function API", () => {
       expect(goodRes.status).toBe(200);
       const data = await goodRes.json();
       expect(data.id).toBe("post_1");
+    });
+  });
+
+  describe("Native Autonomous AI Agent Runtime (agent)", () => {
+    it("runs agent with tool calling and conversation memory", async () => {
+      let toolExecuted = false;
+
+      const supportAgent = agent("support-bot", {
+        system: "You are an APEX14 support assistant.",
+        tools: [
+          {
+            name: "calculateDiscount",
+            description: "Calculates customer discount",
+            execute: async ({ query }: any) => {
+              toolExecuted = true;
+              return { discount: 20, reason: "LOYAL_CUSTOMER" };
+            }
+          }
+        ]
+      });
+
+      const res = await supportAgent.run("Please calculateDiscount for my order");
+      expect(toolExecuted).toBe(true);
+      expect(res.content).toBeDefined();
+
+      // Test route binding with handle()
+      const scope = createScope();
+      scope.route("/api/agent-chat", supportAgent.handle());
+
+      const httpRes = await scope.handle(
+        new Request("http://localhost/api/agent-chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ message: "Hello AI" })
+        })
+      );
+      expect(httpRes.status).toBe(200);
+      const httpData = await httpRes.json();
+      expect(httpData.agent).toBe("support-bot");
+    });
+  });
+
+  describe("Kernel-Level Row-Level Multi-Tenancy (tenant)", () => {
+    it("automatically extracts tenant from header and scopes execution", async () => {
+      const scope = createScope();
+      scope.route("/tenant-info", (ctx) => {
+        return { activeTenant: (ctx as any).tenantId };
+      });
+
+      // 1. Without header -> default tenant
+      const defRes = await scope.handle(new Request("http://localhost/tenant-info"));
+      const defData = await defRes.json();
+      expect(defData.activeTenant).toBe("default");
+
+      // 2. With x-tenant-id header -> tenant scoped
+      const acmeRes = await scope.handle(
+        new Request("http://localhost/tenant-info", {
+          headers: { "x-tenant-id": "acme-corp" }
+        })
+      );
+      const acmeData = await acmeRes.json();
+      expect(acmeData.activeTenant).toBe("acme-corp");
+
+      // 3. Programmatic scoping with tenant.withTenant
+      await tenant.withTenant("stark-industries", () => {
+        expect(tenant.getCurrentId()).toBe("stark-industries");
+      });
+    });
+  });
+
+  describe("Temporal Time-Travel Data Auditing (audit)", () => {
+    it("records changes and reconstructs historical state with asOf", () => {
+      audit.clear();
+
+      // 1. Record create
+      audit.recordChange({
+        table: "accounts",
+        recordId: 101,
+        action: "create",
+        after: { id: 101, balance: 1000, plan: "starter" }
+      });
+
+      // 2. Record update
+      audit.recordChange({
+        table: "accounts",
+        recordId: 101,
+        action: "update",
+        before: { id: 101, balance: 1000, plan: "starter" },
+        after: { id: 101, balance: 2500, plan: "enterprise" }
+      });
+
+      // Check audit history
+      const history = audit.getHistory("accounts", 101);
+      expect(history.length).toBe(2);
+      expect(history[0]?.diff.plan?.after).toBe("enterprise");
+
+      // Check time-travel
+      const futureDate = new Date(Date.now() + 10000);
+      const state = audit.asOf("accounts", 101, futureDate);
+      expect(state.balance).toBe(2500);
+      expect(state.plan).toBe("enterprise");
+    });
+  });
+
+  describe("Event Sourcing & Transactional Outbox (event)", () => {
+    it("publishes to subscribers and manages transactional outbox queue", async () => {
+      event.clear();
+      let receivedEmail = "";
+
+      const UserSignedUp = event<{ email: string }>("user.signed_up");
+      UserSignedUp.subscribe(async ({ email }) => {
+        receivedEmail = email;
+      });
+
+      // 1. Immediate publish
+      await UserSignedUp.publish({ email: "founder@apex14.dev" });
+      expect(receivedEmail).toBe("founder@apex14.dev");
+
+      // 2. Transactional outbox publish
+      const outboxRes = await UserSignedUp.publish({ email: "investor@apex14.dev" }, { transactional: true });
+      expect(outboxRes.status).toBe("queued");
+
+      const pending = event.getOutbox();
+      expect(pending.length).toBeGreaterThanOrEqual(1);
+
+      // 3. Flush outbox
+      const flushed = await event.flushOutbox();
+      expect(flushed).toBeGreaterThanOrEqual(1);
+      expect(receivedEmail).toBe("investor@apex14.dev");
+    });
+  });
+
+  describe("Native Chaos Engineering Simulator (chaos)", () => {
+    it("injects simulated faults and restores normal execution on reset", async () => {
+      const scope = createScope();
+      scope.route("/payments/charge", () => ({ status: "charged" }));
+
+      // Normal call
+      const okRes = await scope.handle(new Request("http://localhost/payments/charge"));
+      expect(okRes.status).toBe(200);
+
+      // Inject 100% failure on /payments/*
+      chaos.inject({
+        routes: ["/payments/*"],
+        failureRate: 1.0,
+        errorStatus: 503,
+        errorMessage: "Simulated Downstream Failure"
+      });
+
+      const failRes = await scope.handle(new Request("http://localhost/payments/charge"));
+      expect(failRes.status).toBe(503);
+
+      // Reset chaos
+      chaos.reset();
+      const restoredRes = await scope.handle(new Request("http://localhost/payments/charge"));
+      expect(restoredRes.status).toBe(200);
+    });
+  });
+
+  describe("Multi-Region Geo-Routing (geo)", () => {
+    it("steers requests based on regional headers or falls back correctly", async () => {
+      const scope = createScope();
+
+      scope.route("/api/cdn-data", {
+        GET: geo.steer({
+          regions: {
+            asia: () => ({ datacenter: "singapore-dc1" }),
+            europe: () => ({ datacenter: "frankfurt-dc1" }),
+            us: () => ({ datacenter: "virginia-dc1" })
+          },
+          fallback: () => ({ datacenter: "global-primary" })
+        })
+      });
+
+      // 1. Asian client (ID = Indonesia -> asia)
+      const asiaRes = await scope.handle(
+        new Request("http://localhost/api/cdn-data", {
+          headers: { "cf-ipcountry": "ID" }
+        })
+      );
+      const asiaData = await asiaRes.json();
+      expect(asiaData.datacenter).toBe("singapore-dc1");
+
+      // 2. European client (DE = Germany -> europe)
+      const euRes = await scope.handle(
+        new Request("http://localhost/api/cdn-data", {
+          headers: { "x-vercel-ip-country": "DE" }
+        })
+      );
+      const euData = await euRes.json();
+      expect(euData.datacenter).toBe("frankfurt-dc1");
+
+      // 3. Fallback client
+      const fbRes = await scope.handle(new Request("http://localhost/api/cdn-data"));
+      const fbData = await fbRes.json();
+      expect(fbData.datacenter).toBe("global-primary");
     });
   });
 });

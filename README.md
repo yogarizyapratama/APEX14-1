@@ -443,6 +443,81 @@ route("/users", CreateUser, ({ body }) => ({ id: "usr_1" }));
 npx apex14 benchmark /users --duration 2000 --requests 1000
 ```
 
+### 7. Autonomous AI Agent Runtime (`agent`)
+```ts
+import { agent, route, task } from "apex14";
+
+const supportAgent = agent("customer-support", {
+  system: "You are an AI support specialist.",
+  tools: [refundTask, "orders.findMany"],
+  memory: { strategy: "session" }
+});
+
+route("/api/chat", supportAgent.handleStream());
+```
+
+### 8. Kernel-Level Row-Level Multi-Tenancy (`tenant`)
+```ts
+import { tenant, model, route } from "apex14";
+
+tenant.configure({ header: "x-tenant-id", column: "tenant_id" });
+
+// Queries are transparently scoped to the active tenant without manual where clauses!
+route("/invoices", () => Invoices.all());
+```
+
+### 9. Temporal Time-Travel Data Auditing (`audit`)
+```ts
+import { model, audit } from "apex14";
+
+const Users = model("users", UserSchema, { audit: true });
+
+// Inspect historical state at any point in time
+const pastUser = Users.asOf("2026-01-01T00:00:00Z").findById(42);
+const changeHistory = audit.getHistory("users", 42);
+```
+
+### 10. Event Sourcing & Transactional Outbox (`event`)
+```ts
+import { event, route } from "apex14";
+
+const UserSignedUp = event<{ email: string }>("user.signed_up");
+
+route("/signup", async ({ body }) => {
+  const user = await User.create(body);
+  await UserSignedUp.publish({ email: user.email }, { transactional: true });
+  return user;
+});
+```
+
+### 11. Native Chaos Engineering Simulator (`chaos`)
+```ts
+import { chaos } from "apex14";
+
+chaos.inject({
+  routes: ["/payment/*"],
+  latencyMs: { min: 200, max: 800 },
+  failureRate: 0.10, // 10% simulated HTTP 503
+  enableWhen: () => process.env.NODE_ENV === "staging"
+});
+```
+
+### 12. Multi-Region Geo-Routing & Replica Steering (`geo`)
+```ts
+import { route, geo } from "apex14";
+
+route("/feed", {
+  GET: geo.steer({
+    regions: {
+      asia: () => TokyoReplica.getFeed(),
+      europe: () => FrankfurtReplica.getFeed(),
+      americas: () => VirginiaPrimary.getFeed()
+    },
+    fallback: () => VirginiaPrimary.getFeed()
+  })
+});
+```
+
 ---
 
 ## Performance Benchmarks

@@ -80,6 +80,12 @@ export { workflow, ApexWorkflow, WorkflowContext, workflowRegistry, type Workflo
 export { live, liveBus, type LiveQueryOptions } from "./live.js";
 export { heal, ApexHealEngine, type Incident, type HealConfig } from "./heal.js";
 export { contract, ApexContract, type ContractDefinition } from "./contract.js";
+export { agent, ApexAgent, type AgentConfig, type AgentTool, type AgentResponse, type AgentMessage } from "./agent.js";
+export { tenant, ApexTenantEngine, type TenantConfig } from "./tenant.js";
+export { audit, ApexAuditEngine, type AuditRecord } from "./audit.js";
+export { event, ApexEvent, type OutboxEvent, type EventHandler } from "./event.js";
+export { chaos, ApexChaosEngine, type ChaosConfig } from "./chaos.js";
+export { geo, ApexGeoEngine, type GeoSteerOptions } from "./geo.js";
 
 export function group(
   prefix: string,
