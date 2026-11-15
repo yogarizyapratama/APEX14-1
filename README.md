@@ -672,6 +672,66 @@ const dartClient = sdk.generate({ language: "dart" });
 const goClient = sdk.generate({ language: "go" });
 ```
 
+### 25. Embedded Vector Similarity & Semantic Search (`vector`)
+```ts
+import { vector, route } from "apex14";
+
+const index = vector.index({ dimensions: 1536, metric: "cosine" });
+index.upsert("doc_refund", embedding, { category: "billing" });
+
+route("/api/search", async ({ query }) => {
+  return index.search(await embed(query.q), { topK: 5 });
+});
+```
+
+### 26. Zero-Latency Dynamic Feature Flagging (`feature`)
+```ts
+import { feature, route } from "apex14";
+
+feature.define("new_checkout", { percentage: 0.25, enabledForTenants: ["vip"] });
+
+route("/checkout", feature.gate("new_checkout", v2Handler, v1Handler));
+```
+
+### 27. Automated PII Redaction & Privacy Shield (`mask`)
+```ts
+import { mask, route } from "apex14";
+
+// Automatic credit card (Luhn check), email, phone, and SSN redaction
+route("/user/:id", getUser, { middleware: [mask.middleware({ pii: true })] });
+```
+
+### 28. Native AI Prompt Injection Defense & Schema Healer (`guardrail`)
+```ts
+import { guardrail, route } from "apex14";
+
+route("/ai/chat", async ({ body }) => {
+  guardrail.assertSafePrompt(body.prompt); // Halts jailbreak attempts
+  const rawOutput = await llm(body.prompt);
+  return guardrail.repairAndValidate(rawOutput, ExpectedSchema);
+});
+```
+
+### 29. Declarative Zero-CLI Schema Migrator (`migrate`)
+```ts
+import { migrate, db } from "apex14";
+
+// Automatically detects missing columns against TypeBox schemas & applies ALTER TABLE
+migrate.register("users", UserSchema);
+await migrate.sync(db);
+```
+
+### 30. Prometheus & OpenTelemetry APM Metrics Engine (`metric`)
+```ts
+import { metric } from "apex14";
+
+const counter = metric.counter("checkouts_total");
+counter.inc(1, { status: "success" });
+
+// Serves standard GET /_metrics for Grafana & Prometheus
+metric.enableMetrics();
+```
+
 ---
 
 ## Performance Benchmarks

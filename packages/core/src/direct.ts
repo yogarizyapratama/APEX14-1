@@ -98,6 +98,12 @@ export { stream, ApexStreamEngine, ApexStreamPipeline } from "./stream.js";
 export { replay, ApexReplayEngine, type ReplayCassette, type ReplayRecordOptions } from "./replay.js";
 export { snapshot, ApexSnapshotEngine, SnapshotMismatchError, type SnapshotOptions } from "./snapshot.js";
 export { sdk, ApexSdkEngine, type SdkLanguage, type SdkGenerateOptions } from "./sdk.js";
+export { vector, ApexVectorEngine, ApexVectorIndex, type VectorMetric, type VectorRecord, type VectorSearchResult } from "./vector.js";
+export { feature, ApexFeatureEngine, type FeatureFlagConfig } from "./feature.js";
+export { mask, ApexMaskEngine, type MaskOptions } from "./mask.js";
+export { guardrail, ApexGuardrailEngine } from "./guardrail.js";
+export { migrate, ApexMigrateEngine, type MigrationPlan, type SqlDialect } from "./migrate.js";
+export { metric, ApexMetricEngine, ApexCounter, ApexGauge, ApexHistogram } from "./metric.js";
 
 export function group(
   prefix: string,

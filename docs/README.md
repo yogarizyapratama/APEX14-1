@@ -131,3 +131,21 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 
 42. [**Zero-Config Polyglot Client SDK Generator (`sdk`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/polyglot-sdk-generator.md)
     - Automated in-memory code generation of idiomatic, zero-dependency client SDKs for TypeScript, Python, Dart, and Go.
+
+43. [**Embedded Vector Similarity & Semantic Search (`vector`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/embedded-vector-search.md)
+    - Native in-memory vector index with Cosine, Dot, and Euclidean metrics, Top-K search, and metadata filtering.
+
+44. [**Zero-Latency Dynamic Feature Flagging (`feature`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/canary-feature-flags.md)
+    - Canary rollouts, deterministic FNV-1a sticky hashing, user/tenant targeting, and zero-overhead route gating.
+
+45. [**Automated PII Redaction & Privacy Shield (`mask`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/pii-redaction-privacy-shield.md)
+    - Automatic Luhn-validated credit card, email, phone, and SSN sanitization for GDPR/HIPAA compliance.
+
+46. [**Native AI Prompt Injection Defense & Schema Healer (`guardrail`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/ai-guardrails-and-schema-healer.md)
+    - Heuristic prompt injection / jailbreak firewall, Markdown JSON stripping, syntax repair, and TypeBox validation.
+
+47. [**Declarative Zero-CLI Schema Migrator (`migrate`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/declarative-database-migrations.md)
+    - Automated TypeBox schema diffing and safe SQL ALTER TABLE / CREATE TABLE generation at application boot.
+
+48. [**Prometheus & OpenTelemetry APM Metrics Engine (`metric`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/prometheus-apm-metrics.md)
+    - Real-time Counters, Gauges, Latency Histograms, and native standard `/_metrics` Prometheus text scrape endpoint.

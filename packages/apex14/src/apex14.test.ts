@@ -23,7 +23,13 @@ import {
   stream,
   replay,
   snapshot,
-  sdk
+  sdk,
+  vector,
+  feature,
+  mask,
+  guardrail,
+  migrate,
+  metric
 } from "./index.js";
 
 describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () => {
@@ -178,5 +184,13 @@ describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () =
     expect(typeof replay.record).toBe("function");
     expect(typeof snapshot.verify).toBe("function");
     expect(typeof sdk.generate).toBe("function");
+
+    // Hyper-Scale & AI-Native primitives verification
+    expect(typeof vector.index).toBe("function");
+    expect(typeof feature.define).toBe("function");
+    expect(typeof mask.sanitize).toBe("function");
+    expect(typeof guardrail.assertSafePrompt).toBe("function");
+    expect(typeof migrate.plan).toBe("function");
+    expect(typeof metric.counter).toBe("function");
   });
 });
