@@ -290,5 +290,38 @@ describe("@apex14/database", () => {
       const found = await Note.find(note.id);
       expect(found?.content).toBe("Zero pure query note");
     });
+
+    it("auto-detects schema drift and non-destructively adds missing columns", async () => {
+      // 1. Initial schema with only title
+      const V1Schema = Type.Object({
+        title: Type.String()
+      });
+      const PostV1 = model("drift_posts", V1Schema);
+      const post1 = await PostV1.create({ title: "First Post" });
+      expect(post1.id).toBeDefined();
+
+      // 2. Updated schema with a new column: views (integer) and category (text)
+      const V2Schema = Type.Object({
+        title: Type.String(),
+        views: Type.Integer({ default: 0 }),
+        category: Type.String({ default: "general" })
+      });
+      const PostV2 = model("drift_posts", V2Schema);
+
+      // Verify columns were added automatically via schema inspection
+      const post2 = await PostV2.create({
+        title: "Second Post",
+        views: 42,
+        category: "engineering"
+      });
+      expect(post2.id).toBeDefined();
+      expect(post2.views).toBe(42);
+      expect(post2.category).toBe("engineering");
+
+      // Verify existing row can still be queried
+      const allPosts = await PostV2.all();
+      expect(allPosts.length).toBe(2);
+      expect(allPosts[0].title).toBe("First Post");
+    });
   });
 });

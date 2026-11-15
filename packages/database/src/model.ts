@@ -59,6 +59,22 @@ export class Model<T = any> {
         }
 
         await db.schema.createTableIfNotExists(this.tableName, columns);
+
+        // Non-destructive Schema Drift Auto-Migration
+        try {
+          const existingCols = await db.schema.getTableColumns(this.tableName);
+          if (existingCols.length > 0) {
+            const existingSet = new Set(existingCols.map((c) => c.toLowerCase()));
+            for (const [colName, colType] of Object.entries(columns)) {
+              if (!existingSet.has(colName.toLowerCase())) {
+                await db.schema.addColumn(this.tableName, colName, colType);
+              }
+            }
+          }
+        } catch {
+          // Gracefully continue if inspection is not supported
+        }
+
         this.initialized = true;
       })();
     }

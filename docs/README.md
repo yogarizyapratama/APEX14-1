@@ -44,3 +44,18 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 
 13. [**End-to-End Type-Safe Client (`@apex14/client`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/type-safe-client.md)
     - Frontend proxy RPC client with full TypeScript autocomplete.
+
+14. [**Embedded Developer Studio (`/_studio`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/studio-and-diagnostics.md)
+    - Visual data explorer, route registry, task queue inspector, and runtime metrics dashboard.
+
+15. [**Native Resilience & Circuit Breaker (`resilient()`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/resilience-and-circuit-breaker.md)
+    - Exponential backoff retries, timeouts, and canary circuit breaker.
+
+16. [**Multi-Tier Caching & SWR (`cache`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/caching-and-swr.md)
+    - In-memory LRU cache, route option caching, stale-while-revalidate, and tag invalidation.
+
+17. [**Native Webhook Engine & Idempotency (`webhook()`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/webhooks-and-idempotency.md)
+    - Stripe/GitHub HMAC signature verification and deduplicated idempotent delivery.
+
+18. [**Universal Edge & Serverless (`toFetch()`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/edge-and-serverless.md)
+    - Universal web standard fetch handler for Cloudflare Workers, Vercel Edge, and Deno.

@@ -9,6 +9,14 @@ import {
   sse,
   task,
   schedule,
+  webhook,
+  enableStudio,
+  toFetch,
+  resilient,
+  CircuitBreakerOpenError,
+  TimeoutError,
+  cache,
+  computeHmacSha256Hex,
   exportMcpTools,
   getOpenApiSpec,
   enableDocs,
@@ -347,6 +355,227 @@ describe("@apex14/core — Direct Function API", () => {
         expect(callData.result.content[0].type).toBe("text");
         expect(callData.result.content[0].text).toContain("Tokyo");
       });
+    });
+  });
+
+  describe("Native Resilience & Circuit Breaker (resilient)", () => {
+    it("retries failing operations with backoff and succeeds on recovery", async () => {
+      let attempts = 0;
+      const unreliableFn = resilient(async () => {
+        attempts++;
+        if (attempts < 3) throw new Error("Temporary network glitch");
+        return "success";
+      }, { retries: 3, retryDelayMs: 20 });
+
+      const result = await unreliableFn();
+      expect(result).toBe("success");
+      expect(attempts).toBe(3);
+    });
+
+    it("trips circuit breaker to OPEN when failure threshold is exceeded", async () => {
+      const failingFn = resilient(async () => {
+        throw new Error("Downstream outage");
+      }, {
+        retries: 0,
+        circuitBreaker: { failureThreshold: 0.5, minimumRequests: 2, resetTimeoutMs: 1000 }
+      });
+
+      // 1. Failures
+      await expect(failingFn()).rejects.toThrow("Downstream outage");
+      await expect(failingFn()).rejects.toThrow("Downstream outage");
+
+      // 2. Next call should fail immediately with CircuitBreakerOpenError without invoking the function
+      await expect(failingFn()).rejects.toThrow(CircuitBreakerOpenError);
+    });
+
+    it("throws TimeoutError when operation exceeds timeoutMs", async () => {
+      const slowFn = resilient(async () => {
+        await new Promise((r) => setTimeout(r, 200));
+        return "done";
+      }, { timeoutMs: 50, retries: 0 });
+
+      await expect(slowFn()).rejects.toThrow(TimeoutError);
+    });
+  });
+
+  describe("Multi-Tier Cache & Tag Invalidation (cache)", () => {
+    it("stores and retrieves values with TTL and tag-based invalidation", () => {
+      cache.clear();
+      cache.set("post:1", { title: "Hello World" }, { ttl: "10s", tags: ["posts", "author:1"] });
+      cache.set("post:2", { title: "Second Post" }, { ttl: "10s", tags: ["posts"] });
+
+      expect(cache.get("post:1")?.title).toBe("Hello World");
+      expect(cache.get("post:2")?.title).toBe("Second Post");
+
+      // Invalidate by tag
+      const count = cache.invalidate("posts");
+      expect(count).toBe(2);
+      expect(cache.get("post:1")).toBeUndefined();
+      expect(cache.get("post:2")).toBeUndefined();
+    });
+
+    it("caches route responses automatically when cache option is enabled", async () => {
+      const scope = createScope();
+      let callCount = 0;
+
+      await withScope(scope, async () => {
+        route("/expensive-calc", () => {
+          callCount++;
+          return { value: 42, count: callCount };
+        }, {
+          cache: { ttl: "10s" }
+        });
+
+        // First call: executes handler
+        const res1 = await scope.handle(new Request("http://localhost/expensive-calc"));
+        const data1 = await res1.json();
+        expect(data1.count).toBe(1);
+
+        // Second call: served directly from cache without incrementing count!
+        const res2 = await scope.handle(new Request("http://localhost/expensive-calc"));
+        const data2 = await res2.json();
+        expect(data2.count).toBe(1);
+        expect(callCount).toBe(1);
+      });
+    });
+  });
+
+  describe("Native Webhook Engine & Idempotency (webhook)", () => {
+    const SECRET = "whsec_test_secret_123456789";
+
+    it("verifies Stripe HMAC signatures and enforces idempotency", async () => {
+      const scope = createScope();
+      let processedEvents: string[] = [];
+
+      await withScope(scope, async () => {
+        webhook("/webhooks/stripe", {
+          provider: "stripe",
+          secret: SECRET,
+          idempotent: true,
+          handler: (event) => {
+            processedEvents.push(event.id);
+            return { processed: true };
+          }
+        });
+
+        const payload = JSON.stringify({ id: "evt_stripe_999", type: "charge.succeeded" });
+        const timestamp = Math.floor(Date.now() / 1000);
+        const signature = await computeHmacSha256Hex(SECRET, `${timestamp}.${payload}`);
+        const stripeSignatureHeader = `t=${timestamp},v1=${signature}`;
+
+        // 1. Valid webhook call
+        const validReq = new Request("http://localhost/webhooks/stripe", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "stripe-signature": stripeSignatureHeader
+          },
+          body: payload
+        });
+
+        const res1 = await scope.handle(validReq);
+        expect(res1.status).toBe(200);
+        expect(processedEvents).toEqual(["evt_stripe_999"]);
+
+        // 2. Duplicate call with same event ID: should be skipped idempotently
+        const duplicateReq = new Request("http://localhost/webhooks/stripe", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "stripe-signature": stripeSignatureHeader
+          },
+          body: payload
+        });
+        const res2 = await scope.handle(duplicateReq);
+        expect(res2.status).toBe(200);
+        const data2 = await res2.json();
+        expect(data2.idempotent).toBe(true);
+        expect(data2.skipped).toBe(true);
+        expect(processedEvents.length).toBe(1); // Handler was not re-executed!
+
+        // 3. Forged signature: should reject with 401
+        const forgedReq = new Request("http://localhost/webhooks/stripe", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "stripe-signature": `t=${timestamp},v1=forged_signature_hex`
+          },
+          body: payload
+        });
+        const forgedRes = await scope.handle(forgedReq);
+        expect(forgedRes.status).toBe(401);
+      });
+    });
+
+    it("verifies GitHub HMAC signatures", async () => {
+      const scope = createScope();
+      let eventAction = "";
+
+      await withScope(scope, async () => {
+        webhook("/webhooks/github", {
+          provider: "github",
+          secret: SECRET,
+          handler: (event) => {
+            eventAction = event.action;
+          }
+        });
+
+        const payload = JSON.stringify({ action: "opened", issue: { number: 10 } });
+        const signature = await computeHmacSha256Hex(SECRET, payload);
+
+        const req = new Request("http://localhost/webhooks/github", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-hub-signature-256": `sha256=${signature}`
+          },
+          body: payload
+        });
+
+        const res = await scope.handle(req);
+        expect(res.status).toBe(200);
+        expect(eventAction).toBe("opened");
+      });
+    });
+  });
+
+  describe("Universal Edge Export (toFetch)", () => {
+    it("exports universal Web Standard fetch handler for Cloudflare / Vercel Edge", async () => {
+      const scope = createScope();
+      scope.route("/edge-ping", () => ({ edge: "active", runtime: "universal" }));
+
+      const fetchHandler = toFetch(scope);
+      const res = await fetchHandler(new Request("http://localhost/edge-ping"));
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.edge).toBe("active");
+    });
+  });
+
+  describe("APEX14 Studio GUI & API Endpoints", () => {
+    it("mounts Developer Studio dashboard and API endpoints", async () => {
+      const scope = createScope();
+      scope.route("/test-model", () => ({ ok: true }));
+      scope.enableStudio({ path: "/_studio" });
+
+      // 1. Studio Dashboard HTML
+      const htmlRes = await scope.handle(new Request("http://localhost/_studio"));
+      expect(htmlRes.status).toBe(200);
+      expect(htmlRes.headers.get("content-type")).toContain("text/html");
+      const html = await htmlRes.text();
+      expect(html).toContain("APEX14 Studio");
+
+      // 2. Studio Routes API
+      const routesRes = await scope.handle(new Request("http://localhost/_studio/api/routes"));
+      expect(routesRes.status).toBe(200);
+      const routes = await routesRes.json();
+      expect(routes.length).toBeGreaterThan(0);
+
+      // 3. Studio System Diagnostics API
+      const sysRes = await scope.handle(new Request("http://localhost/_studio/api/system"));
+      expect(sysRes.status).toBe(200);
+      const sys = await sysRes.json();
+      expect(sys.runtime).toBeDefined();
     });
   });
 });

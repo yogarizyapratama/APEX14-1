@@ -61,6 +61,21 @@ export function enableDocs(options?: { docsPath?: string; specPath?: string; tit
   getActiveScope().enableDocs(options);
 }
 
+export function webhook(path: string, config: any): void {
+  getActiveScope().webhook(path, config);
+}
+
+export function enableStudio(options?: any): void {
+  getActiveScope().enableStudio(options);
+}
+
+export function toFetch(scope = getActiveScope()): (request: Request, env?: any, ctx?: any) => Promise<Response> {
+  return scope.toFetch();
+}
+
+export { resilient, CircuitBreakerOpenError, TimeoutError, type ResilienceOptions } from "./resilience.js";
+export { cache, ApexCache, type CacheOptions } from "./cache.js";
+
 export function group(
   prefix: string,
   callback: () => void,

@@ -10,6 +10,8 @@ export interface NodeServerOptions {
   silent?: boolean;
   docs?: boolean;
   docsPath?: string;
+  studio?: boolean;
+  studioPath?: string;
 }
 
 export interface NodeServerHandle {
@@ -105,12 +107,17 @@ export function listenNode(
   scope: ApexScope,
   options: NodeServerOptions = {}
 ): Promise<NodeServerHandle> {
-  const port = options.port || 3000;
+  const port = options.port !== undefined ? options.port : 3000;
   const host = options.host || "0.0.0.0";
 
   // Automatically enable interactive docs if requested
   if (options.docs) {
     scope.enableDocs({ docsPath: options.docsPath || "/_docs" });
+  }
+
+  // Automatically enable developer studio if requested
+  if (options.studio) {
+    scope.enableStudio({ path: options.studioPath || "/_studio" });
   }
 
   return new Promise((resolve, reject) => {
@@ -232,6 +239,9 @@ export function listenNode(
         console.log(`• Runtime: Node.js (${process.version})`);
         if (options.docs) {
           console.log(`• Interactive Docs: ${url}${options.docsPath || "/_docs"}`);
+        }
+        if (options.studio) {
+          console.log(`• Developer Studio: ${url}${options.studioPath || "/_studio"}`);
         }
       }
 

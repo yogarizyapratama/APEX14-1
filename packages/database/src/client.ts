@@ -289,6 +289,9 @@ export interface DbInterface {
       columns: Record<string, string>
     ): Promise<void>;
     dropTableIfExists(tableName: string): Promise<void>;
+    getTableColumns(tableName: string): Promise<string[]>;
+    addColumn(tableName: string, column: string, type: string): Promise<void>;
+    listTables(): Promise<string[]>;
   };
 }
 
@@ -354,7 +357,50 @@ export const db: DbInterface = Object.assign(
       async dropTableIfExists(tableName: string): Promise<void> {
         const safeTable = tableName.replace(/[^a-zA-Z0-9_]/g, "");
         await defaultDb.execute(`DROP TABLE IF EXISTS "${safeTable}"`);
+      },
+
+      async getTableColumns(tableName: string): Promise<string[]> {
+        const safeTable = tableName.replace(/[^a-zA-Z0-9_]/g, "");
+        try {
+          const rows = await defaultDb.query<{ name: string }>(`PRAGMA table_info("${safeTable}")`);
+          if (rows && rows.length > 0) {
+            return rows.map((r) => r.name);
+          }
+          const infoRows = await defaultDb.query<{ column_name: string }>(
+            `SELECT column_name FROM information_schema.columns WHERE table_name = ?`,
+            [safeTable]
+          );
+          return infoRows.map((r) => r.column_name);
+        } catch {
+          return [];
+        }
+      },
+
+      async addColumn(tableName: string, column: string, type: string): Promise<void> {
+        const safeTable = tableName.replace(/[^a-zA-Z0-9_]/g, "");
+        const safeCol = column.replace(/[^a-zA-Z0-9_]/g, "");
+        const sql = `ALTER TABLE "${safeTable}" ADD COLUMN "${safeCol}" ${type}`;
+        await defaultDb.execute(sql);
+      },
+
+      async listTables(): Promise<string[]> {
+        try {
+          const rows = await defaultDb.query<{ name: string }>(
+            `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`
+          );
+          if (rows && rows.length > 0) {
+            return rows.map((r) => r.name);
+          }
+          const infoRows = await defaultDb.query<{ table_name: string }>(
+            `SELECT table_name FROM information_schema.tables WHERE table_schema='public'`
+          );
+          return infoRows.map((r) => r.table_name);
+        } catch {
+          return [];
+        }
       }
     }
   }
 );
+
+(globalThis as any).__apex14_db = db;

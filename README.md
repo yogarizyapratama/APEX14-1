@@ -311,6 +311,65 @@ const user = await api.users(42).get();
 await api.users.post({ body: { name: "Alice" } });
 ```
 
+### 12. Embedded Developer Studio (`/_studio`)
+
+```ts
+import { run } from "apex14";
+
+// Serves visual Data Explorer, Route Registry, and Task Inspector
+run({ port: 3000, studio: true });
+```
+
+### 13. Native Resilience: Circuit Breaker & Retries
+
+```ts
+import { resilient } from "apex14";
+
+export const callStripe = resilient(async (data) => fetch("https://api.stripe.com/..."), {
+  retries: 3,
+  backoff: "exponential",
+  circuitBreaker: { failureThreshold: 0.5, resetTimeoutMs: 30000 }
+});
+```
+
+### 14. Multi-Tier Caching & SWR
+
+```ts
+import { route, cache } from "apex14";
+
+route("/trending", () => getTrending(), {
+  cache: { ttl: "60s", tags: ["trending"], swr: true }
+});
+
+cache.invalidate("trending");
+```
+
+### 15. Native Webhook Engine & Idempotency
+
+```ts
+import { webhook } from "apex14";
+
+webhook("/webhooks/stripe", {
+  provider: "stripe",
+  secret: process.env.STRIPE_WEBHOOK_SECRET!,
+  idempotent: true, // Auto-skips duplicate event IDs
+  handler: async (event) => {
+    // Cryptographically verified via WebCrypto HMAC
+  }
+});
+```
+
+### 16. Universal Edge & Serverless Export
+
+```ts
+import { route, toFetch } from "apex14";
+
+route("/", () => "Hello Cloudflare Workers!");
+
+// Universal Web Standard fetch export:
+export default { fetch: toFetch() };
+```
+
 ---
 
 ## Performance Benchmarks

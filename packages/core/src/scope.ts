@@ -30,6 +30,9 @@ import {
   type RouteManifestEntry
 } from "./openapi.js";
 import { TaskQueue, TaskScheduler } from "./tasks.js";
+import { createWebhookHandler, type WebhookConfig } from "./webhook.js";
+import { mountStudio, type StudioOptions } from "./studio.js";
+import { cache, type CacheOptions } from "./cache.js";
 
 interface GroupContext {
   prefix: string;
@@ -70,10 +73,25 @@ export class ApexScope {
       );
     }
 
+    // Auto-create caching middleware if cache options are provided
+    const cacheMiddleware: Middleware[] = [];
+    if (options.cache) {
+      cacheMiddleware.push(async (ctx, next) => {
+        const cacheKey = `${ctx.request.method}:${ctx.request.url}`;
+        const cached = cache.get(cacheKey);
+        if (cached !== undefined) {
+          return cached;
+        }
+        const result = await next();
+        cache.set(cacheKey, result, options.cache);
+        return result;
+      });
+    }
+
     // Merge group middleware and route middleware
     const groupMiddleware = this.groupStack.flatMap((g) => g.middleware);
     const routeMiddleware = options.middleware || [];
-    const allMiddleware = [...groupMiddleware, ...validationMiddleware, ...routeMiddleware];
+    const allMiddleware = [...cacheMiddleware, ...groupMiddleware, ...validationMiddleware, ...routeMiddleware];
 
     // Merge group guards and route guards
     const groupGuards = this.groupStack.flatMap((g) => g.guards);
@@ -193,6 +211,21 @@ export class ApexScope {
         return renderDocsHtml(specPath, title);
       }
     });
+  }
+
+  public webhook(path: string, config: WebhookConfig): void {
+    const handler = createWebhookHandler(config);
+    this.route(path, { POST: handler }, { summary: `Webhook (${config.provider || "generic"})` });
+  }
+
+  public enableStudio(options: StudioOptions = {}): void {
+    mountStudio(this, options);
+  }
+
+  public toFetch(): (request: Request, env?: any, ctx?: any) => Promise<Response> {
+    return async (request: Request) => {
+      return await this.handle(request);
+    };
   }
 
   public group(prefix: string, callback: () => void, options: RouteOptions = {}): void {
