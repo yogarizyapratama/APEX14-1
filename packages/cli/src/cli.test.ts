@@ -1,7 +1,8 @@
 import { describe, it, expect, afterAll } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { runDoctor, generateFile, createProject } from "./index.js";
+import { runDoctor, generateFile, createProject, benchmarkRoute, formatBenchmarkMarkdown } from "./index.js";
+import { createScope } from "@apex14/core";
 
 const CLI_TEST_DIR = "./test-cli-sandbox";
 
@@ -51,5 +52,23 @@ describe("@apex14/cli", () => {
 
     const indexFile = await fs.readFile(path.join(projectDir, "src", "index.ts"), "utf8");
     expect(indexFile).toContain('route("/", () => ({');
+  });
+
+  it("benchmarks routes with benchmarkRoute and generates report", async () => {
+    const scope = createScope();
+    scope.route("/ping", () => "pong");
+
+    const res = await benchmarkRoute(scope, "/ping", {
+      requests: 50,
+      durationMs: 500
+    });
+
+    expect(res.totalRequests).toBeGreaterThan(0);
+    expect(res.requestsPerSecond).toBeGreaterThan(0);
+    expect(res.latency.p50).toBeGreaterThanOrEqual(0);
+
+    const md = formatBenchmarkMarkdown(res);
+    expect(md).toContain("APEX14 Route Benchmark");
+    expect(md).toContain("Throughput");
   });
 });

@@ -75,6 +75,11 @@ export function toFetch(scope = getActiveScope()): (request: Request, env?: any,
 
 export { resilient, CircuitBreakerOpenError, TimeoutError, type ResilienceOptions } from "./resilience.js";
 export { cache, ApexCache, type CacheOptions } from "./cache.js";
+export { auth, ApexAuthEngine, type AuthConfig, type AuthSession, type AuthUser } from "./auth.js";
+export { workflow, ApexWorkflow, WorkflowContext, workflowRegistry, type WorkflowRun, type WorkflowStepOptions, type StepRecord } from "./workflow.js";
+export { live, liveBus, type LiveQueryOptions } from "./live.js";
+export { heal, ApexHealEngine, type Incident, type HealConfig } from "./heal.js";
+export { contract, ApexContract, type ContractDefinition } from "./contract.js";
 
 export function group(
   prefix: string,

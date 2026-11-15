@@ -1,6 +1,7 @@
 import { runDoctor } from "./commands/doctor.js";
 import { generateFile } from "./commands/generate.js";
 import { createProject } from "./commands/create.js";
+import { benchmarkRoute, formatBenchmarkMarkdown } from "./commands/benchmark.js";
 import { getActiveScope } from "@apex14/core";
 
 export async function runCli(args: string[]): Promise<void> {
@@ -17,6 +18,7 @@ Commands:
   create <name>               Create a new APEX14 project
   doctor                      Check environment and project configuration
   routes                      List all registered routes in current project
+  benchmark [path]            Run high-throughput latency & RPS micro-benchmark
   generate <type> <name>      Generate route, middleware, or schema file
   info                        Display runtime and environment info
   dev                         Run development server with hot-reload
@@ -109,6 +111,26 @@ Options:
         console.log(`${methodCol} │ ${pathCol} │ ${guardCol}`);
       }
       console.log("");
+    }
+    return;
+  }
+
+  if (command === "benchmark") {
+    const targetPath = args[1] && !args[1].startsWith("-") ? args[1] : "/";
+    const durationArg = args.indexOf("--duration") !== -1 ? parseInt(args[args.indexOf("--duration") + 1]!, 10) : 1000;
+    const requestsArg = args.indexOf("--requests") !== -1 ? parseInt(args[args.indexOf("--requests") + 1]!, 10) : 500;
+    const isJson = args.includes("--json");
+
+    console.log(`▲ Running APEX14 Micro-Benchmark on '${targetPath}'...`);
+    const result = await benchmarkRoute(getActiveScope(), targetPath, {
+      durationMs: durationArg,
+      requests: requestsArg
+    });
+
+    if (isJson) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log("\n" + formatBenchmarkMarkdown(result));
     }
     return;
   }

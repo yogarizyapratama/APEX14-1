@@ -17,6 +17,17 @@ export function typeBoxToSqlType(propertySchema: any): string {
   return "TEXT";
 }
 
+function notifyMutation(tableName: string, action: string, data?: any): void {
+  const notify = (globalThis as any).__apex14_live_notify;
+  if (typeof notify === "function") {
+    try {
+      notify(tableName, { action, data });
+    } catch {
+      // Safe ignore
+    }
+  }
+}
+
 export class Model<T = any> {
   public tableName: string;
   public schema?: TSchema;
@@ -128,11 +139,13 @@ export class Model<T = any> {
       if (!payload.updated_at) payload.updated_at = now;
     }
     const created = await db<T>(this.tableName).create(payload);
+    let result = created;
     if ((created as any).id !== undefined) {
       const full = await db<T>(this.tableName).findById((created as any).id);
-      if (full) return full;
+      if (full) result = full;
     }
-    return created;
+    notifyMutation(this.tableName, "create", result);
+    return result;
   }
 
   public async createMany(items: Record<string, any>[]): Promise<T[]> {
@@ -151,30 +164,39 @@ export class Model<T = any> {
       payload.updated_at = new Date().toISOString();
     }
 
+    let updated: T | null = null;
     if (typeof idOrWhere === "string" || typeof idOrWhere === "number") {
-      return await db<T>(this.tableName).updateById(idOrWhere, payload);
+      updated = await db<T>(this.tableName).updateById(idOrWhere, payload);
+    } else {
+      await this.query().where(idOrWhere).update(payload);
+      updated = await this.query().where(idOrWhere).first();
     }
-    await this.query().where(idOrWhere).update(payload);
-    return await this.query().where(idOrWhere).first();
+    notifyMutation(this.tableName, "update", updated);
+    return updated;
   }
 
   public async delete(idOrWhere: string | number | Record<string, any>): Promise<boolean> {
     await this.ensureTable();
+    let success = false;
     if (this.options.softDelete) {
       const now = new Date().toISOString();
       if (typeof idOrWhere === "string" || typeof idOrWhere === "number") {
         const res = await db<T>(this.tableName).where("id", idOrWhere).update({ deleted_at: now });
-        return res.rowsAffected > 0;
+        success = res.rowsAffected > 0;
+      } else {
+        const res = await db<T>(this.tableName).where(idOrWhere).update({ deleted_at: now });
+        success = res.rowsAffected > 0;
       }
-      const res = await db<T>(this.tableName).where(idOrWhere).update({ deleted_at: now });
-      return res.rowsAffected > 0;
+    } else if (typeof idOrWhere === "string" || typeof idOrWhere === "number") {
+      success = await db<T>(this.tableName).deleteById(idOrWhere);
+    } else {
+      const res = await db<T>(this.tableName).where(idOrWhere).delete();
+      success = res.rowsAffected > 0;
     }
-
-    if (typeof idOrWhere === "string" || typeof idOrWhere === "number") {
-      return await db<T>(this.tableName).deleteById(idOrWhere);
+    if (success) {
+      notifyMutation(this.tableName, "delete", { id: idOrWhere });
     }
-    const res = await db<T>(this.tableName).where(idOrWhere).delete();
-    return res.rowsAffected > 0;
+    return success;
   }
 
   public async count(where?: Record<string, any>): Promise<number> {

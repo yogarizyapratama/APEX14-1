@@ -17,6 +17,11 @@ import {
   TimeoutError,
   cache,
   computeHmacSha256Hex,
+  auth,
+  workflow,
+  live,
+  heal,
+  contract,
   exportMcpTools,
   getOpenApiSpec,
   enableDocs,
@@ -576,6 +581,178 @@ describe("@apex14/core — Direct Function API", () => {
       expect(sysRes.status).toBe(200);
       const sys = await sysRes.json();
       expect(sys.runtime).toBeDefined();
+    });
+  });
+
+  describe("Native Direct Auth & Sessions (auth)", () => {
+    it("handles registration, authentication, sessions, and guard protection", async () => {
+      const scope = createScope();
+      auth.configure({ mountRoutes: true }, scope);
+
+      scope.route("/protected-data", () => ({ secret: "classified" }), {
+        guard: "auth"
+      });
+
+      // 1. Unauthenticated request rejected
+      const unauthRes = await scope.handle(new Request("http://localhost/protected-data"));
+      expect(unauthRes.status).toBe(403);
+
+      // 2. Register user
+      const regRes = await scope.handle(
+        new Request("http://localhost/auth/register", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: "alex@example.com", password: "SecretPassword123!" })
+        })
+      );
+      expect(regRes.status).toBe(200);
+      const regData = await regRes.json();
+      expect(regData.token).toBeDefined();
+      const token = regData.token;
+
+      // 3. Authenticated request with Bearer token passes guard
+      const authRes = await scope.handle(
+        new Request("http://localhost/protected-data", {
+          headers: { authorization: `Bearer ${token}` }
+        })
+      );
+      expect(authRes.status).toBe(200);
+      const authData = await authRes.json();
+      expect(authData.secret).toBe("classified");
+
+      // 4. Access /auth/me
+      const meRes = await scope.handle(
+        new Request("http://localhost/auth/me", {
+          headers: { authorization: `Bearer ${token}` }
+        })
+      );
+      expect(meRes.status).toBe(200);
+      const meData = await meRes.json();
+      expect(meData.user.email).toBe("alex@example.com");
+    });
+  });
+
+  describe("Durable Step Functions & Workflows (workflow)", () => {
+    it("executes steps idempotently, tracks state, and supports compensation rollbacks", async () => {
+      let rolledBack = false;
+
+      const orderWorkflow = workflow("process-order", async (ctx, payload: { amount: number; failAtEnd?: boolean }) => {
+        const step1 = await ctx.step("reserve-inventory", async () => {
+          return { reserved: true, count: 1 };
+        }, {
+          rollback: async () => {
+            rolledBack = true;
+          }
+        });
+
+        if (payload.failAtEnd) {
+          throw new Error("Payment gateway declined");
+        }
+
+        return { orderId: "ord_100", step1 };
+      });
+
+      // Success execution
+      const successRun = await orderWorkflow.trigger({ amount: 50 });
+      expect(successRun.status).toBe("completed");
+      expect(successRun.result?.orderId).toBe("ord_100");
+      expect(successRun.steps["reserve-inventory"]?.status).toBe("completed");
+
+      // Failed execution triggers saga rollback
+      const failedRun = await orderWorkflow.trigger({ amount: 50, failAtEnd: true });
+      expect(failedRun.status).toBe("failed");
+      expect(rolledBack).toBe(true);
+      expect(failedRun.steps["reserve-inventory"]?.status).toBe("rolled_back");
+    });
+  });
+
+  describe("Reactive Live Queries (live)", () => {
+    it("mounts live SSE stream and emits initial snapshot", async () => {
+      const scope = createScope();
+      let users = [{ id: 1, name: "Alice" }];
+
+      await withScope(scope, async () => {
+        live("/live-users", () => users, { model: "users" });
+
+        const req = new Request("http://localhost/live-users");
+        const res = await scope.handle(req);
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-type")).toContain("text/event-stream");
+      });
+    });
+  });
+
+  describe("Incident Replay & Self-Healing Telemetry (heal)", () => {
+    it("captures crash telemetry and replays failing request", async () => {
+      const scope = createScope();
+      heal.clear();
+      heal.configure({ enabled: true });
+
+      scope.route("/unstable-endpoint", ({ query }: any) => {
+        if (query.fail === "true") {
+          throw new TypeError("Simulated database failure");
+        }
+        return { recovered: true };
+      });
+
+      // 1. Trigger error
+      const failRes = await scope.handle(new Request("http://localhost/unstable-endpoint?fail=true"));
+      expect(failRes.status).toBe(500);
+
+      // 2. Incident was captured
+      const incidents = heal.listIncidents();
+      expect(incidents.length).toBeGreaterThan(0);
+      const inc = incidents[0]!;
+      expect(inc.error.name).toBe("TypeError");
+      expect(inc.aiRemediationPrompt).toContain("APEX14 Incident Diagnosis");
+
+      // 3. Replay with heal.replay
+      const replayRes = await heal.replay(inc.id, scope);
+      expect(replayRes.status).toBe(500);
+    });
+  });
+
+  describe("Type-Safe Dual-Mode Contract SDK (contract)", () => {
+    it("enforces schema validation on contract routes", async () => {
+      const scope = createScope();
+
+      const CreatePostContract = contract({
+        body: Type.Object({
+          title: Type.String({ minLength: 3 }),
+          content: Type.String()
+        }),
+        response: Type.Object({
+          id: Type.String(),
+          title: Type.String()
+        }),
+        summary: "Create blog post"
+      });
+
+      scope.route("/posts", CreatePostContract, ({ body }: any) => {
+        return { id: "post_1", title: body.title };
+      });
+
+      // 1. Invalid body fails with 400
+      const badRes = await scope.handle(
+        new Request("http://localhost/posts", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ title: "Hi" }) // too short
+        })
+      );
+      expect(badRes.status).toBe(400);
+
+      // 2. Valid body succeeds with 200
+      const goodRes = await scope.handle(
+        new Request("http://localhost/posts", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ title: "Valid Title", content: "Great article content" })
+        })
+      );
+      expect(goodRes.status).toBe(200);
+      const data = await goodRes.json();
+      expect(data.id).toBe("post_1");
     });
   });
 });

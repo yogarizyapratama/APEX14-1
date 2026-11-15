@@ -59,3 +59,21 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 
 18. [**Universal Edge & Serverless (`toFetch()`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/edge-and-serverless.md)
     - Universal web standard fetch handler for Cloudflare Workers, Vercel Edge, and Deno.
+
+19. [**Direct Auth & Session Engine (`auth`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/auth-and-sessions.md)
+    - Zero-boilerplate session engine, auto-mounted login/register/logout/me routes, and role-based guards.
+
+20. [**Durable Step Functions & Distributed Saga Workflows (`workflow`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/workflows-and-sagas.md)
+    - Zero-DevOps durable execution, memoized steps, durable sleep, and automatic saga compensation rollbacks.
+
+21. [**Reactive Live Queries & Real-Time Sync (`live`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/reactive-live-queries.md)
+    - Query-level reactive SSE streaming with automated database model mutation detection.
+
+22. [**Incident Replay & Self-Healing Telemetry (`heal`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/self-healing-and-replays.md)
+    - Automated crash capture, sanitized state snapshots, AI diagnosis prompt generation, and Studio replay lab.
+
+23. [**Type-Safe Dual-Mode Contract SDK (`contract`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/contracts-and-dual-sdk.md)
+    - Single contract schema driving TypeBox runtime validation, OpenAPI 3.1, MCP tools, and frontend RPC client.
+
+24. [**Micro-Benchmarking & Performance Verification (`apex14 benchmark`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/benchmarking.md)
+    - Built-in CLI micro-benchmark command measuring latency percentiles (p50, p95, p99), RPS, and memory footprint.

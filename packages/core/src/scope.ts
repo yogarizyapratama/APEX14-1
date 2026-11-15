@@ -33,6 +33,7 @@ import { TaskQueue, TaskScheduler } from "./tasks.js";
 import { createWebhookHandler, type WebhookConfig } from "./webhook.js";
 import { mountStudio, type StudioOptions } from "./studio.js";
 import { cache, type CacheOptions } from "./cache.js";
+import { heal } from "./heal.js";
 
 interface GroupContext {
   prefix: string;
@@ -54,9 +55,30 @@ export class ApexScope {
 
   public route(
     path: string,
-    handlerOrMethods: Handler | MethodMap,
-    options: RouteOptions = {}
+    handlerOrMethods: Handler | MethodMap | any,
+    options: RouteOptions | any = {}
   ): void {
+    let actualHandlerOrMethods = handlerOrMethods;
+    let actualOptions: RouteOptions = options || {};
+
+    if (handlerOrMethods && handlerOrMethods.isContract) {
+      actualOptions = { ...handlerOrMethods.toRouteOptions(), ...(typeof options === "object" && !options.isContract ? options : {}) };
+      actualHandlerOrMethods = typeof options === "function" ? options : options.handler;
+    } else if (
+      handlerOrMethods &&
+      typeof handlerOrMethods === "object" &&
+      typeof handlerOrMethods.handler === "function" &&
+      handlerOrMethods.options
+    ) {
+      actualOptions = { ...handlerOrMethods.options, ...options };
+      actualHandlerOrMethods = handlerOrMethods.handler;
+    } else if (options && options.isContract) {
+      actualOptions = options.toRouteOptions();
+    }
+
+    options = actualOptions;
+    handlerOrMethods = actualHandlerOrMethods;
+
     const currentPrefix = this.groupStack.map((g) => g.prefix).join("");
     const fullPath = this.combinePaths(currentPrefix, path);
 
@@ -130,13 +152,13 @@ export class ApexScope {
           this.routesManifest.push({
             path: fullPath,
             method: methodUpper,
-            handler,
+            handler: handler as Handler,
             options: metadata
           });
           this.router.add({
             method: methodUpper,
             path: fullPath,
-            handler,
+            handler: handler as Handler,
             middleware: allMiddleware,
             metadata
           });
@@ -151,7 +173,7 @@ export class ApexScope {
     options: RouteOptions = {}
   ): void {
     this.route(path, {
-      GET: async (ctx) => {
+      GET: async (ctx: ApexRequestContext) => {
         const stream = generatorFn(ctx);
         return new ApexSseResult(stream);
       }
@@ -206,7 +228,7 @@ export class ApexScope {
     });
 
     this.route(docsPath, {
-      GET: (ctx) => {
+      GET: (ctx: ApexRequestContext) => {
         ctx.responseHeaders.set("content-type", "text/html; charset=utf-8");
         return renderDocsHtml(specPath, title);
       }
@@ -336,6 +358,9 @@ export class ApexScope {
       const res = serializeResponse(result, ctx);
       return this.applyCors(res, request);
     } catch (err: any) {
+      if (ctx) {
+        heal.capture(err, ctx);
+      }
       const errRes = serializeErrorResponse(err);
       return this.applyCors(errRes, request);
     }

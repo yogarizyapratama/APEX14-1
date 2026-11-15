@@ -1,4 +1,7 @@
 import type { ApexScope } from "./scope.js";
+import type { ApexRequestContext } from "@apex14/http";
+import { heal } from "./heal.js";
+import { workflowRegistry } from "./workflow.js";
 
 function getDb(): any {
   return (globalThis as any).__apex14_db;
@@ -27,6 +30,7 @@ export function renderStudioHtml(studioPath: string = "/_studio", title: string 
       --text-muted: #9ca3af;
       --success: #10b981;
       --danger: #ef4444;
+      --warning: #f59e0b;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -140,6 +144,16 @@ export function renderStudioHtml(studioPath: string = "/_studio", title: string 
       cursor: pointer;
       font-size: 12px;
     }
+    .btn-action {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-right: 6px;
+    }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
     .stat-card {
       background: var(--card);
@@ -157,6 +171,8 @@ export function renderStudioHtml(studioPath: string = "/_studio", title: string 
       <li><button class="nav-btn active" onclick="switchTab('data')">📁 Data Explorer</button></li>
       <li><button class="nav-btn" onclick="switchTab('routes')">🛣️ Route Registry</button></li>
       <li><button class="nav-btn" onclick="switchTab('tasks')">⚡ Tasks & Queues</button></li>
+      <li><button class="nav-btn" onclick="switchTab('workflows')">🔄 Durable Workflows</button></li>
+      <li><button class="nav-btn" onclick="switchTab('incidents')">🩺 Incident Replay Lab</button></li>
       <li><button class="nav-btn" onclick="switchTab('system')">📈 System Metrics</button></li>
     </ul>
   </div>
@@ -193,6 +209,12 @@ export function renderStudioHtml(studioPath: string = "/_studio", title: string 
       } else if (tab === 'tasks') {
         title.innerText = '⚡ Tasks & Queues';
         loadTasksView();
+      } else if (tab === 'workflows') {
+        title.innerText = '🔄 Durable Workflows';
+        loadWorkflowsView();
+      } else if (tab === 'incidents') {
+        title.innerText = '🩺 Incident Replay Lab';
+        loadIncidentsView();
       } else if (tab === 'system') {
         title.innerText = '📈 System Diagnostics';
         loadSystemView();
@@ -279,6 +301,57 @@ export function renderStudioHtml(studioPath: string = "/_studio", title: string 
       body.innerHTML = html;
     }
 
+    async function loadWorkflowsView() {
+      const body = document.getElementById('view-body');
+      body.innerHTML = 'Loading workflows...';
+      const res = await fetch(studioApi + '/workflows');
+      const data = await res.json();
+      let html = '<div class="grid"><div class="stat-card"><div>Registered Workflows</div><div class="stat-val">' + data.workflows.length + '</div></div><div class="stat-card"><div>Total Executions</div><div class="stat-val">' + data.totalRuns + '</div></div></div>';
+      html += '<div class="card"><h3>Workflow Registry</h3><table><thead><tr><th>Workflow Name</th><th>Total Runs</th><th>Last Status</th></tr></thead><tbody>';
+      if (!data.workflows.length) {
+        html += '<tr><td colspan="3" style="color:var(--text-muted)">No workflows registered.</td></tr>';
+      } else {
+        data.workflows.forEach(w => {
+          html += '<tr><td><strong>' + w.name + '</strong></td><td>' + w.runs.length + '</td><td><span class="badge" style="background:#1e3a8a;color:#93c5fd">' + (w.runs[0]?.status || 'idle') + '</span></td></tr>';
+        });
+      }
+      html += '</tbody></table></div>';
+      body.innerHTML = html;
+    }
+
+    async function loadIncidentsView() {
+      const body = document.getElementById('view-body');
+      body.innerHTML = 'Loading crash incidents...';
+      const res = await fetch(studioApi + '/incidents');
+      const incidents = await res.json();
+      let html = '<div class="card"><h3>Crash & Exception Telemetry</h3>';
+      if (!incidents.length) {
+        html += '<p style="color:var(--success);margin-top:10px">✔ Zero incidents detected. System is running cleanly!</p></div>';
+        body.innerHTML = html;
+        return;
+      }
+      html += '<table><thead><tr><th>Time</th><th>Method</th><th>URL</th><th>Exception</th><th>Replay</th></tr></thead><tbody>';
+      incidents.forEach(inc => {
+        const replayLabel = inc.replayedAt ? ('Replayed (' + inc.replayStatus + ')') : 'Replay Request';
+        html += '<tr><td>' + new Date(inc.timestamp).toLocaleTimeString() + '</td><td><span class="badge badge-delete">' + inc.method + '</span></td><td>' + inc.url + '</td><td><strong>' + inc.error.name + '</strong>: ' + inc.error.message + '</td><td><button class="btn-action" onclick="replayIncident(\\'' + inc.id + '\\')">' + replayLabel + '</button></td></tr>';
+      });
+      html += '</tbody></table></div>';
+      body.innerHTML = html;
+    }
+
+    async function replayIncident(id) {
+      const btn = event.target;
+      btn.innerText = 'Replaying...';
+      try {
+        const res = await fetch(studioApi + '/incidents/' + id + '/replay', { method: 'POST' });
+        const data = await res.json();
+        alert('Replay Response Status: ' + data.status + '\\n' + JSON.stringify(data.result, null, 2));
+        loadIncidentsView();
+      } catch (err) {
+        alert('Replay failed: ' + err.message);
+      }
+    }
+
     async function loadSystemView() {
       const body = document.getElementById('view-body');
       const res = await fetch(studioApi + '/system');
@@ -299,7 +372,7 @@ export function mountStudio(scope: ApexScope, options: StudioOptions = {}): void
 
   // 1. Studio Dashboard HTML
   scope.route(studioPath, {
-    GET: (ctx) => {
+    GET: (ctx: ApexRequestContext) => {
       ctx.responseHeaders.set("content-type", "text/html; charset=utf-8");
       return renderStudioHtml(studioPath, title);
     }
@@ -315,7 +388,7 @@ export function mountStudio(scope: ApexScope, options: StudioOptions = {}): void
 
   // 3. Studio API: Model Rows
   scope.route(`${studioPath}/api/models/:name`, {
-    GET: async ({ params }) => {
+    GET: async ({ params }: ApexRequestContext) => {
       const database = getDb();
       return database ? await database(params.name).limit(50).get() : [];
     }
@@ -323,7 +396,7 @@ export function mountStudio(scope: ApexScope, options: StudioOptions = {}): void
 
   // 4. Studio API: Delete Row
   scope.route(`${studioPath}/api/models/:name/:id`, {
-    DELETE: async ({ params }) => {
+    DELETE: async ({ params }: ApexRequestContext) => {
       const database = getDb();
       const res = database ? await database(params.name).deleteById(params.id) : false;
       return { success: res };
@@ -341,7 +414,33 @@ export function mountStudio(scope: ApexScope, options: StudioOptions = {}): void
     }
   });
 
-  // 6. Studio API: Routes Registry
+  // 6. Studio API: Workflows Registry
+  scope.route(`${studioPath}/api/workflows`, {
+    GET: () => {
+      const list = Array.from(workflowRegistry.values()).map((w) => ({
+        name: w.name,
+        runs: w.listRuns()
+      }));
+      const totalRuns = list.reduce((acc, w) => acc + w.runs.length, 0);
+      return { workflows: list, totalRuns };
+    }
+  });
+
+  // 7. Studio API: Incidents Telemetry
+  scope.route(`${studioPath}/api/incidents`, {
+    GET: () => {
+      return heal.listIncidents();
+    }
+  });
+
+  // 8. Studio API: Incident Replay Action
+  scope.route(`${studioPath}/api/incidents/:id/replay`, {
+    POST: async ({ params }: ApexRequestContext) => {
+      return await heal.replay(params.id, scope);
+    }
+  });
+
+  // 9. Studio API: Routes Registry
   scope.route(`${studioPath}/api/routes`, {
     GET: () => {
       return scope.routesManifest.map((r) => ({
@@ -356,7 +455,7 @@ export function mountStudio(scope: ApexScope, options: StudioOptions = {}): void
     }
   });
 
-  // 7. Studio API: System Diagnostics
+  // 10. Studio API: System Diagnostics
   scope.route(`${studioPath}/api/system`, {
     GET: () => {
       return {

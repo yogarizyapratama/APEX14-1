@@ -17,7 +17,8 @@
   "dependencies": {
     "@apex14/router": "workspace:*",
     "@apex14/http": "workspace:*",
-    "@apex14/validation": "workspace:*"
+    "@apex14/validation": "workspace:*",
+    "@apex14/security": "workspace:*"
   },
   "scripts": {
     "build": "tsc",
