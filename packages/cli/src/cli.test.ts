@@ -39,7 +39,7 @@ describe("@apex14/cli", () => {
     expect(schemaContent).toContain("PostSchema");
   });
 
-  it("scaffolds a new project with createProject", async () => {
+  it("scaffolds a minimal project with createProject", async () => {
     const projectDir = await createProject({
       name: "sample-app",
       template: "minimal",
@@ -52,6 +52,28 @@ describe("@apex14/cli", () => {
 
     const indexFile = await fs.readFile(path.join(projectDir, "src", "index.ts"), "utf8");
     expect(indexFile).toContain('route("/", () => ({');
+  });
+
+  it("scaffolds a complete standard enterprise project by default", async () => {
+    const projectDir = await createProject({
+      name: "enterprise-app",
+      cwd: CLI_TEST_DIR
+    });
+
+    const pkg = JSON.parse(await fs.readFile(path.join(projectDir, "package.json"), "utf8"));
+    expect(pkg.name).toBe("enterprise-app");
+    expect(pkg.dependencies.apex14).toBeDefined();
+
+    // Verify key files and directories exist
+    expect(await fs.stat(path.join(projectDir, "src/app.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, "src/config/env.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, "src/database/connection.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, "src/common/guards/auth.guard.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, "src/modules/auth/auth.service.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, "src/modules/users/users.route.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, "src/modules/uploads/uploads.service.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, "test/app.test.ts"))).toBeDefined();
+    expect(await fs.stat(path.join(projectDir, ".env"))).toBeDefined();
   });
 
   it("benchmarks routes with benchmarkRoute and generates report", async () => {

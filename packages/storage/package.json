@@ -1,6 +1,6 @@
 {
   "name": "@apex14/storage",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Safe, streaming file management and storage engine for APEX14",
   "type": "module",
   "files": [
@@ -16,7 +16,7 @@
     }
   },
   "dependencies": {
-    "@apex14/http": "^0.2.0"
+    "@apex14/http": "^0.2.1"
   },
   "scripts": {
     "build": "tsc",

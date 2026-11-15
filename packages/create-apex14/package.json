@@ -1,6 +1,6 @@
 {
   "name": "create-apex14",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Scaffold an APEX14 application in seconds",
   "type": "module",
   "files": [
@@ -20,7 +20,7 @@
     }
   },
   "dependencies": {
-    "@apex14/cli": "^0.2.0"
+    "@apex14/cli": "^0.2.1"
   },
   "scripts": {
     "build": "tsc"

@@ -164,7 +164,15 @@ export {
 } from "@apex14/security";
 
 // Storage & Files
-export { file, store, configureStorage } from "@apex14/storage";
+export {
+  file,
+  store,
+  configureStorage,
+  LocalStorageProvider,
+  type StorageProvider,
+  type FileMetadata,
+  type SaveFileOptions
+} from "@apex14/storage";
 
 // Database, Models & Resources
 export {

@@ -70,14 +70,14 @@ Options:
       process.exitCode = 1;
       return;
     }
-    const template = args.includes("--template") ? (args[args.indexOf("--template") + 1] as any) : "minimal";
+    const template = args.includes("--template") ? (args[args.indexOf("--template") + 1] as any) : "standard";
     console.log(`▲ Scaffolding APEX14 project '${name}' (${template} template)...`);
     const target = await createProject({ name, template });
     console.log(`✔ Created project at ${target}`);
     console.log(`\nNext steps:`);
     console.log(`  cd ${name}`);
-    console.log(`  pnpm install`);
-    console.log(`  pnpm dev\n`);
+    console.log(`  bun install   (or npm install)`);
+    console.log(`  bun dev       (or npm run dev)\n`);
     return;
   }
 
