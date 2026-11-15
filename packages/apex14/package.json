@@ -1,0 +1,50 @@
+{
+  "name": "apex14",
+  "version": "0.1.0",
+  "description": "APEX14 — The Intelligent API Framework. Direct Function API, TypeScript-first, Multi-Runtime.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./security": {
+      "types": "./dist/security.d.ts",
+      "import": "./dist/security.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "import": "./dist/storage.js"
+    },
+    "./database": {
+      "types": "./dist/database.d.ts",
+      "import": "./dist/database.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.js"
+    }
+  },
+  "dependencies": {
+    "@apex14/core": "workspace:*",
+    "@apex14/router": "workspace:*",
+    "@apex14/http": "workspace:*",
+    "@apex14/validation": "workspace:*",
+    "@apex14/security": "workspace:*",
+    "@apex14/storage": "workspace:*",
+    "@apex14/database": "workspace:*",
+    "@apex14/runtime-node": "workspace:*",
+    "@apex14/runtime-bun": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

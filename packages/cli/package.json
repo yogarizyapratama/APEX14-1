@@ -1,0 +1,30 @@
+{
+  "name": "@apex14/cli",
+  "version": "0.1.0",
+  "description": "Developer productivity CLI engine for APEX14",
+  "type": "module",
+  "bin": {
+    "apex14": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@apex14/core": "workspace:*",
+    "@apex14/router": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

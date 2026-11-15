@@ -1,0 +1,26 @@
+{
+  "name": "@apex14/validation",
+  "version": "0.1.0",
+  "description": "TypeBox-based validation and contract engine for APEX14",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@apex14/http": "workspace:*",
+    "@sinclair/typebox": "^0.34.14"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

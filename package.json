@@ -1,0 +1,23 @@
+{
+  "name": "apex14-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "APEX14 — The Intelligent API Framework",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r --filter=!apex14-monorepo run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "tsc -b packages/*/tsconfig.json",
+    "bench": "node benchmarks/router.bench.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

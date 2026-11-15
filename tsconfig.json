@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true
+  },
+  "references": [
+    { "path": "./packages/router" },
+    { "path": "./packages/http" },
+    { "path": "./packages/validation" },
+    { "path": "./packages/core" },
+    { "path": "./packages/security" },
+    { "path": "./packages/storage" },
+    { "path": "./packages/database" },
+    { "path": "./packages/runtime-node" },
+    { "path": "./packages/runtime-bun" },
+    { "path": "./packages/apex14" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/create-apex14" }
+  ]
+}

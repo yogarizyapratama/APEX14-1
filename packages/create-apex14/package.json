@@ -1,0 +1,26 @@
+{
+  "name": "create-apex14",
+  "version": "0.1.0",
+  "description": "Scaffold an APEX14 application in seconds",
+  "type": "module",
+  "bin": {
+    "create-apex14": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@apex14/cli": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

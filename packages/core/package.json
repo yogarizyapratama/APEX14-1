@@ -1,0 +1,27 @@
+{
+  "name": "@apex14/core",
+  "version": "0.1.0",
+  "description": "Kernel and Direct Function API engine for APEX14",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@apex14/router": "workspace:*",
+    "@apex14/http": "workspace:*",
+    "@apex14/validation": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@apex14/runtime-bun",
+  "version": "0.1.0",
+  "description": "Bun native runtime adapter for APEX14",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@apex14/core": "workspace:*",
+    "@apex14/http": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
