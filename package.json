@@ -1,6 +1,6 @@
 {
   "name": "apex14-monorepo",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "description": "APEX14 — The Intelligent API Framework",
   "type": "module",
