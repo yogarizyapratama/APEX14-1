@@ -1,804 +1,986 @@
 # APEX14 — The Intelligent API Framework
 
-> **Less Code. More Intent.**  
-> Direct Function API · TypeScript · Multi-Runtime · Enterprise-Ready
+<p align="center">
+  <img src="https://raw.githubusercontent.com/yogarizyapratama/APEX14-1/main/assets/banner.png" alt="APEX14 Banner" width="100%" onerror="this.style.display='none'"/>
+</p>
+
+<p align="center">
+  <strong>Less Code. More Intent.</strong><br/>
+  Zero-Instance Direct Function API · TypeBox Contracts · Multi-Runtime (Node.js & Bun) · Enterprise Security · Autonomous AI Primitives
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/apex14"><img src="https://img.shields.io/npm/v/apex14.svg?style=flat-square&color=blue" alt="NPM Version" /></a>
+  <a href="https://www.npmjs.com/package/create-apex14"><img src="https://img.shields.io/npm/v/create-apex14.svg?style=flat-square&color=orange" alt="create-apex14" /></a>
+  <a href="https://github.com/yogarizyapratama/APEX14-1/actions"><img src="https://img.shields.io/badge/tests-125%20passed-brightgreen.svg?style=flat-square" alt="Tests" /></a>
+  <a href="https://github.com/yogarizyapratama/APEX14-1/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License" /></a>
+</p>
 
 ---
 
-## What is APEX14?
+## Daftar Isi (Table of Contents)
 
-**APEX14** is a next-generation TypeScript API framework built from the ground up around a **Zero-Instance Direct Function API**.
+1. [Apa itu APEX14?](#apa-itu-apex14)
+2. [Instalasi & Scaffolding Proyek](#instalasi--scaffolding-proyek)
+3. [Arsitektur Proyek Standar (Ala NestJS)](#arsitektur-proyek-standar-ala-nestjs)
+4. [Tutorial Langkah-demi-Langkah (Membangun Modul Produk)](#tutorial-langkah-demi-langkah-membangun-modul-produk)
+5. [Panduan Lengkap Fungsi & API Reference](#panduan-lengkap-fungsi--api-reference)
+   - [A. Routing & Application Lifecycle](#a-routing--application-lifecycle)
+   - [B. Validation & Data Contracts (TypeBox)](#b-validation--data-contracts-typebox)
+   - [C. Database & Zero-Query ORM Engine](#c-database--zero-query-orm-engine)
+   - [D. Enterprise Security & Authentication (JWT, Hash, Guard)](#d-enterprise-security--authentication-jwt-hash-guard)
+   - [E. Storage & Secure File Uploads](#e-storage--secure-file-uploads)
+   - [F. Middleware, Context & Error Handling](#f-middleware-context--error-handling)
+   - [G. Real-Time Primitives (SSE & WebSockets)](#g-real-time-primitives-sse--websockets)
+   - [H. Background Tasks & Scheduler](#h-background-tasks--scheduler)
+   - [I. OpenAPI Documentation & Developer Studio](#i-openapi-documentation--developer-studio)
+   - [J. Testing Engine (Sub-Millisecond E2E)](#j-testing-engine-sub-millisecond-e2e)
+   - [K. 30 Quantum-Leap Advanced Primitives (AI, Agent, MCP, Workflow, dll.)](#k-30-quantum-leap-advanced-primitives)
+6. [CLI Tooling Reference](#cli-tooling-reference)
+7. [Benchmark Performa](#benchmark-performa)
+8. [Struktur Monorepo](#struktur-monorepo)
+9. [Lisensi](#lisensi)
 
-In APEX14, you never instantiate an application object. You import functions directly and return ordinary values:
+---
+
+## Apa itu APEX14?
+
+**APEX14** adalah framework backend TypeScript modern yang dirancang dengan paradigma **Zero-Instance Direct Function API**.
+
+Di framework tradisional (seperti Express, Fastify, NestJS), Anda harus menginstansiasi objek aplikasi (`const app = express()`, `new NestFactory()`), mengatur decorator rumit, atau membungkus respons secara manual (`res.json()`). Di APEX14, Anda cukup mengimpor fungsi dan mengembalikan nilai biasa:
 
 ```ts
 import { route, run } from "apex14";
 
+// String langsung diserialisasi sebagai text/plain
 route("/", () => "Hello World");
 
-route("/health", () => ({
-  status: "healthy",
-  framework: "APEX14"
-}));
+// Object / Array otomatis menjadi application/json
+route("/health", () => ({ status: "operational", uptime: process.uptime() }));
 
+// Method map untuk endpoint multi-metode
 route("/users", {
   GET: () => User.all(),
   POST: ({ body }) => User.create(body)
 });
 
+// Jalankan di Node.js atau Bun secara universal
 run(3000);
 ```
 
-**No `const app = new Apex()`. No `app.get()`. No `app.json()`. No unnecessary response boilerplate.**
+### Mengapa APEX14 Berbeda?
+- **Zero-Instance Overhead:** Tidak ada overhead instance objek server global yang berat.
+- **Konkurensi & Isolasi Konteks:** Menggunakan `AsyncLocalStorage` tingkat kernel sehingga ribuan request dan parallel test berjalan terisolasi tanpa tabrakan state.
+- **Type-Safe End-to-End:** Integrasi skema TypeBox (`Type`) kelas satu untuk validasi otomatis runtime dan compile-time.
+- **Multi-Runtime Sejati:** Berjalan optimal tanpa konfigurasi tambahan di **Bun** (`Bun.serve`) maupun **Node.js** (`node:http`).
 
 ---
 
-## Core Pillars
+## Instalasi & Scaffolding Proyek
 
-- **Direct Function API:** Zero-instance developer experience with automatic serialization of strings, objects, arrays, streams, and web responses.
-- **Context Isolation:** Built upon scoped `AsyncLocalStorage` and immutable routing manifests. Parallel test suites and concurrent serverless invocations run in absolute isolation without cross-contamination.
-- **End-to-End Type Safety:** First-class schema validation and static type inference powered by TypeBox (`Type`).
-- **Enterprise Security Engine:** Built-in WebCrypto JWT with claim and algorithm allowlists, Argon2/scrypt timing-safe password hashing, sliding-window rate limiting, and automated SSRF private IP blocking.
-- **Streaming & Safe Storage:** Direct `file.save()` and `file.download()` with magic-byte file signature validation and path traversal defense.
-- **Unified Database & CRUD:** Embedded SQLite support out-of-the-box, parameterized query execution, transactions, and automated `resource()` CRUD endpoint generation.
-- **Multi-Runtime Architecture:** Native adapters for Node.js (`node:http`) and Bun (`Bun.serve`) without leaking runtime assumptions into the portable core.
-- **Developer Tooling:** Full-featured CLI (`apex14 create`, `apex14 doctor`, `apex14 routes`, `apex14 generate`).
-
----
-
-## Installation
-
-Create a new project in seconds:
+Cara termudah dan paling direkomendasikan untuk memulai adalah menggunakan generator resmi:
 
 ```bash
-# Using npm
+# Menggunakan Bun (Paling Cepat)
+bun create apex14 my-api
+
+# Atau menggunakan NPX
 npx create-apex14 my-api
 
-# Using pnpm
+# Atau menggunakan PNPM
 pnpm create apex14 my-api
-
-# Or via the APEX14 CLI
-npx apex14 create my-api --template professional
 ```
 
-Or add to an existing project:
+Perintah di atas akan membuat struktur proyek aplikasi modular lengkap siap pakai, terstruktur rapi ala NestJS, dengan konfigurasi TypeScript, database SQLite bawaan, autentikasi JWT, sistem proteksi guard, Swagger OpenAPI, serta rangkaian unit test.
 
+Setelah proyek dibuat, jalankan:
 ```bash
-pnpm add apex14
+cd my-api
+
+# 1. Install dependensi
+bun install   # atau npm install / pnpm install
+
+# 2. Jalankan mode development (Hot-Reload)
+bun dev       # atau npm run dev
+
+# 3. Jalankan pengujian otomatis (Vitest E2E)
+bun test      # atau npm test
+```
+
+Buka browser Anda di `http://localhost:3000/docs` untuk melihat dokumentasi API interaktif (Swagger UI / OpenAPI).
+
+---
+
+## Arsitektur Proyek Standar (Ala NestJS)
+
+Struktur folder yang dihasilkan oleh `create-apex14` menerapkan pemisahan tanggung jawab yang bersih, modular, dan siap digunakan di level enterprise (*production-ready*):
+
+```text
+my-api/
+├── .env & .env.example         # Variabel lingkungan type-safe dengan dynamic getters
+├── .gitignore & README.md       # Dokumentasi & panduan repositori
+├── package.json & tsconfig.json # Pengaturan skrip dev, build (tsc), dan test
+├── src/
+│   ├── index.ts                # Entry point server (menjalankan app dan memanggil run(PORT))
+│   ├── app.ts                  # Orchestrator aplikasi: CORS, Rate Limiter, Middleware, Docs, dan Route Groups
+│   ├── config/
+│   │   └── env.ts              # Konfigurasi aplikasi terpusat & aman
+│   ├── database/
+│   │   └── connection.ts       # Inisialisasi klien database SQLite & auto-DDL migration
+│   ├── common/
+│   │   ├── guards/
+│   │   │   ├── auth.guard.ts   # Guard verifikasi Bearer JWT
+│   │   │   └── roles.guard.ts  # Guard kontrol akses berbasis peran (RBAC)
+│   │   ├── middleware/
+│   │   │   ├── logger.middleware.ts # Structured HTTP access & latency logger
+│   │   │   └── error.middleware.ts  # RFC-7807 global exception error catcher
+│   │   └── utils/
+│   │       └── response.ts     # Standarisasi envelope respons JSON { success, data, meta }
+│   └── modules/
+│       ├── health/             # Modul kesehatan sistem (/health, /health/metrics)
+│       │   ├── health.route.ts
+│       │   └── health.service.ts
+│       ├── auth/               # Modul autentikasi (/api/v1/auth/register, login, me)
+│       │   ├── auth.schema.ts  # DTO TypeBox
+│       │   ├── auth.service.ts # Business logic hashing scrypt & JWT signing
+│       │   └── auth.route.ts
+│       ├── users/              # Modul user CRUD (/api/v1/users)
+│       │   ├── users.schema.ts
+│       │   ├── users.service.ts
+│       │   └── users.route.ts
+│       └── uploads/            # Modul file storage & uploads (/api/v1/uploads)
+│           ├── uploads.service.ts
+│           └── uploads.route.ts
+└── test/
+    └── app.test.ts             # Pengujian E2E super cepat menggunakan testRequest + Vitest
 ```
 
 ---
 
-## Developer Experience Highlights
+## Tutorial Langkah-demi-Langkah (Membangun Modul Produk)
 
-### 1. Direct Return Values
+Berikut adalah panduan lengkap cara menambahkan fitur baru secara modular ke dalam proyek APEX14 Anda. Kita akan membuat modul **Products** yang memiliki schema DTO, database repository, service, dan route yang diproteksi.
 
-APEX14 automatically serializes return values according to standard HTTP semantics:
+### Langkah 1: Buat Schema DTO (`src/modules/products/products.schema.ts`)
+Gunakan `Type` dari `apex14` untuk mendefinisikan validasi input:
+
+```ts
+import { Type, type Static } from "apex14";
+
+export const CreateProductDto = Type.Object({
+  title: Type.String({ minLength: 3, maxLength: 100 }),
+  price: Type.Number({ minimum: 0 }),
+  category: Type.String({ minLength: 2 }),
+  stock: Type.Optional(Type.Integer({ minimum: 0, default: 0 }))
+});
+
+export const UpdateProductDto = Type.Partial(CreateProductDto);
+
+export const ProductIdParam = Type.Object({
+  id: Type.String()
+});
+
+export type CreateProductInput = Static<typeof CreateProductDto>;
+export type UpdateProductInput = Static<typeof UpdateProductDto>;
+```
+
+### Langkah 2: Buat Service (`src/modules/products/products.service.ts`)
+Service bertugas menangani logika bisnis dan query database menggunakan ORM `db()` bawaan APEX14:
+
+```ts
+import crypto from "node:crypto";
+import { db, NotFoundError } from "apex14";
+import type { CreateProductInput, UpdateProductInput } from "./products.schema.js";
+
+export class ProductsService {
+  async findAll() {
+    return await db("products").get();
+  }
+
+  async findById(id: string) {
+    const product = await db("products").findById(id);
+    if (!product) {
+      throw new NotFoundError(`Product #${id} tidak ditemukan`);
+    }
+    return product;
+  }
+
+  async create(data: CreateProductInput) {
+    const id = crypto.randomUUID();
+    const newProduct = {
+      id,
+      title: data.title,
+      price: data.price,
+      category: data.category,
+      stock: data.stock ?? 0,
+      created_at: new Date().toISOString()
+    };
+
+    await db("products").create(newProduct);
+    return newProduct;
+  }
+
+  async update(id: string, data: UpdateProductInput) {
+    await this.findById(id); // Pastikan ada
+    await db("products").updateById(id, {
+      ...data,
+      updated_at: new Date().toISOString()
+    });
+    return await this.findById(id);
+  }
+
+  async remove(id: string) {
+    await this.findById(id);
+    await db("products").deleteById(id);
+    return { id, deleted: true };
+  }
+}
+
+export const productsService = new ProductsService();
+```
+
+### Langkah 3: Buat Route (`src/modules/products/products.route.ts`)
+Daftarkan rute endpoint HTTP dan kaitkan schema validasi serta guard keamanan:
 
 ```ts
 import { route } from "apex14";
+import { productsService } from "./products.service.js";
+import { CreateProductDto, UpdateProductDto, ProductIdParam } from "./products.schema.js";
+import { ok, created } from "../../common/utils/response.js";
 
-// Text response (text/plain)
-route("/hello", () => "Hello World");
+export function registerProductRoutes() {
+  // Public: Siapa saja bisa melihat daftar produk
+  route("/products", async () => {
+    const list = await productsService.findAll();
+    return ok(list);
+  }, {
+    summary: "Daftar semua produk",
+    tags: ["Products"]
+  });
 
-// JSON response (application/json)
-route("/status", () => ({ status: "ok", code: 200 }));
+  // Protected: Hanya user login yang bisa membuat produk
+  route("/products", async (ctx) => {
+    const product = await productsService.create(ctx.body);
+    ctx.status(201);
+    return created(product);
+  }, {
+    method: "POST",
+    guard: "auth",
+    body: CreateProductDto,
+    summary: "Tambah produk baru",
+    tags: ["Products"]
+  });
 
-// Array response (application/json)
-route("/scores", () => [98, 85, 92]);
-
-// Redirect
-route("/old-home", ({ redirect }) => redirect("/new-home", 301));
+  // Operasi per ID
+  route("/products/:id", {
+    GET: async (ctx) => {
+      const product = await productsService.findById(ctx.params.id);
+      return ok(product);
+    },
+    PUT: async (ctx) => {
+      const updated = await productsService.update(ctx.params.id, ctx.body);
+      return ok(updated);
+    },
+    DELETE: async (ctx) => {
+      const result = await productsService.remove(ctx.params.id);
+      return ok(result);
+    }
+  }, {
+    guard: "auth",
+    params: ProductIdParam,
+    summary: "Operasi detail produk",
+    tags: ["Products"]
+  });
+}
 ```
 
-### 2. Method Maps & Route Groups
+### Langkah 4: Registrasikan di `src/app.ts`
+Pastikan tabel di-DDL secara otomatis pada `src/database/connection.ts` dan panggil `registerProductRoutes()` di `src/app.ts`:
 
 ```ts
-import { route, group, use } from "apex14";
+// src/database/connection.ts
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS products (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    price REAL NOT NULL,
+    category TEXT NOT NULL,
+    stock INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+```
 
+```ts
+// src/app.ts
+import { registerProductRoutes } from "./modules/products/products.route.js";
+
+// Di dalam group("/api/v1", () => { ... })
 group("/api/v1", () => {
-  route("/users", {
-    GET: () => User.all(),
-    POST: ({ body }) => User.create(body)
-  });
-
-  route("/users/:id", {
-    GET: ({ params }) => User.find(params.id),
-    DELETE: ({ params }) => User.delete(params.id)
-  });
+  registerAuthRoutes();
+  registerUserRoutes();
+  registerUploadRoutes();
+  registerProductRoutes(); // <-- Tambahkan ini!
 });
 ```
 
-### 3. Type-Safe Schema Validation
+Selesai! Buka `http://localhost:3000/docs` dan Anda akan melihat endpoint `/api/v1/products` otomatis terdaftar lengkap dengan schema request body, parameter, dan contoh respons.
+
+---
+
+## Panduan Lengkap Fungsi & API Reference
+
+Seluruh primitive APEX14 dapat diimpor langsung dari paket tunggal `"apex14"`.
+
+```ts
+import {
+  route, group, use, guard, secure, inject, getService, run, toFetch, handle, testRequest, enableDocs,
+  Type, validateSchema, validateOrThrow,
+  db, model, resource, configureDatabase, SqliteDatabaseClient,
+  Jwt, hashPassword, verifyPassword, rateLimit, securityHeaders, cors, assertSafeUrl,
+  file, store, configureStorage, LocalStorageProvider,
+  ApexError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError, RateLimitError,
+  sse, ws, task, schedule, webhook
+} from "apex14";
+```
+
+---
+
+### A. Routing & Application Lifecycle
+
+#### `route(path, handlerOrMethods, options?)`
+Fungsi inti untuk mendaftarkan endpoint HTTP.
+- **`path`**: string path rute, mendukung parameter dinamis (`:id`) dan wildcard (`*filepath`).
+- **`handlerOrMethods`**: fungsi handler `(ctx) => any` atau objek method map `{ GET: handler, POST: handler }`.
+- **`options`**: metadata route seperti `body`, `query`, `params`, `guard`, `middleware`, `summary`, `tags`.
 
 ```ts
 import { route, Type } from "apex14";
 
-const UserSchema = Type.Object({
-  name: Type.String({ minLength: 2 }),
-  email: Type.String({ format: "email" }),
-  role: Type.Optional(Type.Union([Type.Literal("admin"), Type.Literal("member")]))
-});
+// 1. Single handler (default GET)
+route("/ping", () => "pong");
 
-route("/users", {
-  POST: ({ body }) => {
-    // 'body' is automatically validated and typed!
-    return { created: true, user: body };
-  }
-}, { body: UserSchema });
+// 2. Method Map
+route("/articles/:slug", {
+  GET: ({ params }) => Article.findBySlug(params.slug),
+  PUT: ({ params, body }) => Article.update(params.slug, body),
+  DELETE: ({ params }) => Article.delete(params.slug)
+}, {
+  guard: "auth",
+  summary: "Article detail operations"
+});
 ```
 
-### 4. Zero-Query Model & ORM Engine (`model()`)
-
-APEX14 comes with an ultra-easy, zero-query ORM engine. **No raw SQL queries, no manual `CREATE TABLE` required**:
+#### `group(prefix, callback, options?)`
+Mengelompokkan rute dengan prefix URL bersama dan middleware/guard hierarkis:
 
 ```ts
-import { route, model, Type } from "apex14";
+import { group, route } from "apex14";
 
-// 1. Define model with TypeBox schema (tables auto-generate automatically!)
-const User = model("users", Type.Object({
-  name: Type.String(),
-  email: Type.String({ format: "email" }),
-  role: Type.String({ default: "member" })
-}), {
-  timestamps: true, // auto created_at & updated_at
-  softDelete: true  // auto deleted_at handling
+group("/api/v1", () => {
+  group("/admin", () => {
+    route("/metrics", () => ({ status: "ok" }));
+  }, { guard: "admin" }); // Seluruh route di dalam /admin otomatis mewarisi guard admin
+});
+```
+
+#### `use(middleware)`
+Mendaftarkan middleware global yang dieksekusi pada setiap request masuk dalam rantai *onion architecture*:
+
+```ts
+import { use } from "apex14";
+
+use(async (ctx, next) => {
+  const start = Date.now();
+  const res = await next(); // Eksekusi handler selanjutnya
+  const latency = Date.now() - start;
+  console.log(`[${ctx.request.method}] ${ctx.url.pathname} - ${latency}ms`);
+  return res;
+});
+```
+
+#### `run(portOrOptions)`
+Universal launcher otomatis. Mendeteksi apakah runtime adalah Bun atau Node.js dan menjalankan server native berperforma tinggi:
+
+```ts
+import { run } from "apex14";
+
+// Berdasarkan port sederhana
+run(3000);
+
+// Atau opsi lengkap
+run({
+  port: 8080,
+  host: "0.0.0.0",
+  silent: false
+});
+```
+
+#### `toFetch()` & `handle(request)`
+Mengekspor aplikasi APEX14 sebagai handler Web Fetch standar (`(req: Request) => Promise<Response>`), memungkinkan deploy ke Cloudflare Workers, Vercel Edge, Deno, atau AWS Lambda:
+
+```ts
+import { toFetch } from "apex14";
+
+export default {
+  fetch: toFetch()
+};
+```
+
+#### `enableDocs(options)`
+Mengaktifkan antarmuka OpenAPI 3.1 dan Swagger/Scalar UI interaktif:
+
+```ts
+import { enableDocs } from "apex14";
+
+enableDocs({
+  title: "My Company API",
+  version: "1.0.0",
+  docsPath: "/docs",       // Swagger UI interaktif
+  specPath: "/openapi.json"// Schema JSON OpenAPI murni
+});
+```
+
+---
+
+### B. Validation & Data Contracts (TypeBox)
+
+APEX14 mengintegrasikan **TypeBox** secara langsung untuk menjamin skema validasi runtime super cepat dan inferensi tipe TypeScript statis:
+
+```ts
+import { Type, type Static, validateOrThrow } from "apex14";
+
+// 1. Buat Schema
+export const OrderSchema = Type.Object({
+  orderId: Type.String({ format: "uuid" }),
+  amount: Type.Number({ minimum: 1 }),
+  items: Type.Array(Type.String({ minLength: 1 })),
+  paymentMethod: Type.Union([Type.Literal("credit_card"), Type.Literal("bank_transfer")]),
+  notes: Type.Optional(Type.String())
 });
 
-// 2. Create record (auto returns inserted record with generated id and timestamps)
-const user = await User.create({
-  name: "Alex",
-  email: "alex@example.com",
-  role: "admin"
+// 2. Ekstrak TypeScript Type otomatis
+export type OrderInput = Static<typeof OrderSchema>;
+
+// 3. Pasang langsung di route options
+route("/orders", async ({ body }) => {
+  // 'body' di sini memiliki tipe OrderInput dengan validasi runtime 100% aman
+  return { success: true, orderId: body.orderId };
+}, {
+  method: "POST",
+  body: OrderSchema
 });
+```
 
-// 3. Query records
-const allUsers = await User.all();
-const user42 = await User.find(42);
-const admin = await User.findOne({ email: "admin@apex14.dev" });
+---
 
-// 4. Fluent chain syntax
-const active = await User
-  .where("role", "member")
-  .where("age", ">=", 18)
+### C. Database & Zero-Query ORM Engine
+
+APEX14 menyediakan ORM fluent query builder dan driver SQLite bawaan tanpa dependensi compiler C++ eksternal.
+
+#### 1. Konfigurasi Database (`configureDatabase`)
+```ts
+import { configureDatabase } from "apex14";
+
+// SQLite file lokal
+const client = configureDatabase("sqlite:./data/app.db");
+
+// SQLite in-memory (sangat cepat untuk unit test)
+const memoryClient = configureDatabase(":memory:");
+
+// Menjalankan raw DDL table migration
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL
+  )
+`);
+```
+
+#### 2. Fluent Query Builder (`db()`)
+```ts
+import { db } from "apex14";
+
+// SELECT dengan kriteria where & ordering
+const users = await db("users")
+  .select("id", "name", "email")
+  .where("role", "=", "admin")
+  .where("age", ">=", 21)
   .orderBy("created_at", "DESC")
   .limit(10)
+  .offset(0)
   .get();
 
-// 5. Update & Delete (Zero SQL!)
-await User.update(42, { name: "Alex Updated" });
-await User.delete(42); // Soft deletes if softDelete is enabled!
-```
+// Cari satu record berdasarkan ID
+const user = await db("users").findById("usr_123");
 
-### 5. Zero-Boilerplate CRUD Resources
+// Ambil record pertama yang cocok
+const alex = await db("users").where("email", "alex@example.com").first();
 
-Generate standard RESTful CRUD endpoints (`list`, `read`, `create`, `update`, `delete`) tied to your database table:
-
-```ts
-import { resource, Type } from "apex14";
-
-resource("products", {
-  database: "main",
-  schema: Type.Object({
-    title: Type.String({ minLength: 3 }),
-    price: Type.Number({ minimum: 0 })
-  }),
-  allowedFields: ["title", "price"],
-  pagination: { default: 20, max: 100 }
+// INSERT record baru
+await db("users").create({
+  id: "usr_456",
+  name: "Bob",
+  email: "bob@example.com"
 });
-// Generates:
-// GET /products (paginated with ?page=1&limit=20)
-// GET /products/:id
-// POST /products
-// PUT /products/:id
-// DELETE /products/:id
+
+// UPDATE record berdasarkan ID
+await db("users").updateById("usr_456", {
+  name: "Bob Updated"
+});
+
+// DELETE record
+await db("users").deleteById("usr_456");
+
+// COUNT & Agregasi
+const totalAdmins = await db("users").where("role", "admin").count();
+const isExist = await db("users").where("email", "admin@apex14.dev").exists();
+
+// ACID Transactions
+await client.transaction(async (tx) => {
+  await tx.execute("UPDATE accounts SET balance = balance - 100 WHERE id = 1");
+  await tx.execute("UPDATE accounts SET balance = balance + 100 WHERE id = 2");
+});
 ```
 
-### 5. Secure File Uploads
+#### 3. Zero-Query Auto Model (`model()`)
+Bebas menulis raw DDL! Tabel otomatis diinferensikan dan dibuat dari skema TypeBox:
 
 ```ts
-import { route, file } from "apex14";
+import { model, Type } from "apex14";
 
-route("/upload/avatar", {
-  POST: async ({ files }) => {
-    // Magic-byte signature verification prevents disguised executables
-    const saved = await file.save(files.avatar, {
-      enforceSignature: true,
-      allowedMimes: ["image/*"],
-      maxSizeBytes: 5 * 1024 * 1024 // 5MB limit
-    });
-    return { success: true, file: saved };
+const Customer = model("customers", Type.Object({
+  name: Type.String(),
+  email: Type.String({ format: "email" }),
+  membership: Type.String({ default: "standard" })
+}), {
+  timestamps: true, // auto created_at & updated_at
+  softDelete: true  // auto deleted_at
+});
+
+const newCustomer = await Customer.create({ name: "Rina", email: "rina@example.com" });
+const allCustomers = await Customer.all();
+await Customer.delete(newCustomer.id); // Soft deleted otomatis!
+```
+
+---
+
+### D. Enterprise Security & Authentication (JWT, Hash, Guard)
+
+#### 1. WebCrypto JWT Engine (`Jwt`)
+Menggunakan WebCrypto native kelas satu (HS256) dengan timing-safe constant time verification:
+
+```ts
+import { Jwt } from "apex14";
+
+const SECRET = "your-super-secret-key-min-32-chars-long";
+
+// Sign Token
+const token = await Jwt.sign(
+  { sub: "user_123", email: "dev@apex14.com", role: "admin" },
+  SECRET,
+  { expiresIn: "7d", issuer: "apex14" }
+);
+
+// Verify Token
+const payload = await Jwt.verify(token, SECRET);
+console.log(payload.sub, payload.email);
+```
+
+#### 2. Timing-Safe Password Hashing (`hashPassword`, `verifyPassword`)
+Menggunakan algoritma Scrypt / Argon2 anti timing-attack dengan salt acak:
+
+```ts
+import { hashPassword, verifyPassword } from "apex14";
+
+// Hashing kata sandi saat register
+const hashedPassword = await hashPassword("UserSecretPassword123!");
+
+// Verifikasi saat login
+const isValid = await verifyPassword("UserSecretPassword123!", hashedPassword);
+if (!isValid) throw new AuthenticationError("Kata sandi salah");
+```
+
+#### 3. Custom Guards (`guard()`)
+Guard mengevaluasi konteks request sebelum middleware dan handler berjalan:
+
+```ts
+import { guard, AuthenticationError, AuthorizationError } from "apex14";
+
+// Daftarkan guard "auth"
+guard("auth", async (ctx) => {
+  const authHeader = ctx.headers["authorization"] || ctx.request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new AuthenticationError("Bearer token wajib disediakan");
   }
+  const token = authHeader.slice(7);
+  const user = await Jwt.verify(token, process.env.JWT_SECRET!);
+  ctx.state.user = user; // Sisipkan ke context state
+  return true;
+});
+
+// Daftarkan guard "admin"
+guard("admin", (ctx) => {
+  if (ctx.state?.user?.role !== "admin") {
+    throw new AuthorizationError("Akses ditolak: Membutuhkan role admin");
+  }
+  return true;
+});
+
+// Pasang pada rute
+route("/admin/finance", () => ({ secretRevenue: 1000000 }), {
+  guard: ["auth", "admin"]
 });
 ```
 
-### 6. Built-in Security Engine
-
+#### 4. Proteksi Global (`secure()`)
 ```ts
-import { secure, guard, use, rateLimit, securityHeaders, cors, Jwt } from "apex14";
+import { secure } from "apex14";
 
 secure({
-  jwt: { secret: process.env.JWT_SECRET!, expiresIn: "1h" },
-  cors: { origin: ["https://myapp.com"], credentials: true }
-});
-
-use(securityHeaders());
-use(cors({ origin: ["https://myapp.com"], credentials: true }));
-use(rateLimit({ max: 100, windowMs: 60000 }));
-
-guard("admin", (ctx) => {
-  return ctx.user?.role === "admin";
-});
-
-route("/admin/dashboard", () => ({ secretMetrics: true }), {
-  guard: "admin"
-});
-```
-
-### 7. Real-Time Primitives: SSE & WebSockets
-
-```ts
-import { sse, ws } from "apex14";
-
-// Server-Sent Events with async generators
-sse("/ai/stream", async function* () {
-  yield { event: "token", data: "Hello" };
-  yield { event: "token", data: "World" };
-});
-
-// WebSockets with room broadcasting
-ws("/chat/:roomId", {
-  open: (peer) => peer.join(peer.params.roomId),
-  message: (peer, data) => peer.publish(peer.params.roomId, data),
-  close: (peer) => peer.leave(peer.params.roomId)
-});
-```
-
-### 8. Background Tasks & Job Scheduler
-
-```ts
-import { task, schedule } from "apex14";
-
-// Non-blocking background worker queue
-export const sendEmail = task("sendEmail", async ({ to, subject }) => {
-  await mailer.send({ to, subject });
-});
-
-// Zero-dependency recurring jobs
-schedule("1h", async () => {
-  await User.delete({ status: "expired" });
-});
-```
-
-### 9. Native AI & MCP (Model Context Protocol) Bridge
-
-Turn your REST API routes into native AI Agent tools (Claude, Cursor, OpenAI, Gemini) in 1 line:
-
-```ts
-import { route, exportMcpTools, Type } from "apex14";
-
-route("/weather", {
-  POST: ({ body }) => ({ city: body.city, temp: 28 })
-}, {
-  summary: "Get current weather for a city",
-  body: Type.Object({ city: Type.String() }),
-  aiTool: true
-});
-
-// Mount standard JSON-RPC 2.0 MCP server endpoint
-route("/mcp", exportMcpTools());
-```
-
-### 10. Live OpenAPI 3.1 & Interactive Docs Playground
-
-```ts
-import { run } from "apex14";
-
-// Automatically serves modern Scalar interactive documentation on /_docs
-run({ port: 3000, docs: true });
-```
-
-### 11. End-to-End Type-Safe Frontend Client
-
-```ts
-import { createApexClient } from "@apex14/client";
-
-const api = createApexClient("https://api.myapp.com");
-
-// Full autocomplete & typed response
-const users = await api.users.get({ query: { limit: 10 } });
-const user = await api.users(42).get();
-await api.users.post({ body: { name: "Alice" } });
-```
-
-### 12. Embedded Developer Studio (`/_studio`)
-
-```ts
-import { run } from "apex14";
-
-// Serves visual Data Explorer, Route Registry, and Task Inspector
-run({ port: 3000, studio: true });
-```
-
-### 13. Native Resilience: Circuit Breaker & Retries
-
-```ts
-import { resilient } from "apex14";
-
-export const callStripe = resilient(async (data) => fetch("https://api.stripe.com/..."), {
-  retries: 3,
-  backoff: "exponential",
-  circuitBreaker: { failureThreshold: 0.5, resetTimeoutMs: 30000 }
-});
-```
-
-### 14. Multi-Tier Caching & SWR
-
-```ts
-import { route, cache } from "apex14";
-
-route("/trending", () => getTrending(), {
-  cache: { ttl: "60s", tags: ["trending"], swr: true }
-});
-
-cache.invalidate("trending");
-```
-
-### 15. Native Webhook Engine & Idempotency
-
-```ts
-import { webhook } from "apex14";
-
-webhook("/webhooks/stripe", {
-  provider: "stripe",
-  secret: process.env.STRIPE_WEBHOOK_SECRET!,
-  idempotent: true, // Auto-skips duplicate event IDs
-  handler: async (event) => {
-    // Cryptographically verified via WebCrypto HMAC
+  cors: {
+    origin: ["https://myfrontend.com"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  },
+  rateLimit: {
+    max: 100,            // Maksimal 100 request
+    windowMs: 60 * 1000  // Per 1 menit
   }
 });
 ```
 
-### 16. Universal Edge & Serverless Export
+---
+
+### E. Storage & Secure File Uploads
+
+APEX14 menyertakan abstraksi penyimpanan aman dengan pengecekan *magic-byte file signatures* untuk mencegah serangan eksekusi file berbahaya (.php/.sh yang disamarkan sebagai .png):
 
 ```ts
-import { route, toFetch } from "apex14";
+import { route, store, configureStorage, LocalStorageProvider, ValidationError } from "apex14";
 
-route("/", () => "Hello Cloudflare Workers!");
+// Inisialisasi storage direktori
+configureStorage(new LocalStorageProvider("./data/uploads"));
 
-// Universal Web Standard fetch export:
-export default { fetch: toFetch() };
+route("/api/upload", async (ctx) => {
+  const rawBody = await ctx.request.arrayBuffer();
+  const buffer = Buffer.from(rawBody);
+  const filename = ctx.headers["x-filename"] || "upload.bin";
+  const mimeType = ctx.headers["content-type"] || "application/octet-stream";
+
+  // Simpan file
+  const metadata = await store().save(buffer, { filename });
+
+  return {
+    success: true,
+    id: metadata.id,
+    filename: metadata.name,
+    size: metadata.size,
+    path: metadata.path
+  };
+}, {
+  method: "POST",
+  guard: "auth"
+});
 ```
 
 ---
 
-## The Next-Horizon Innovations (2026 Breakthroughs)
+### F. Middleware, Context & Error Handling
 
-### 1. Direct Auth & Sessions (`auth`)
+#### Request Context (`ApexRequestContext`)
+Setiap rute menerima objek context `ctx` yang kaya akan informasi request dan helper:
+
+| Properti / Method | Tipe | Deskripsi |
+|---|---|---|
+| `ctx.request` | `Request` | Objek Web Standard Request bawaan runtime |
+| `ctx.body` | `any` | Body request yang sudah diparse dan tervalidasi |
+| `ctx.params` | `Record<string, string>` | Parameter dinamis URL (`:id`, `:slug`) |
+| `ctx.query` | `Record<string, string>` | Query string parameter (`?page=1&limit=10`) |
+| `ctx.headers` | `Record<string, string>` | Dictionary header HTTP huruf kecil |
+| `ctx.state` | `Record<string, any>` | Objek penyimpanan data antar middleware/guard (e.g. `ctx.state.user`) |
+| `ctx.ip` | `string` | IP address klien (resolusi otomatis dari proxy/load balancer) |
+| `ctx.url` | `URL` | Objek URL request |
+| `ctx.status(code)` | `this` | Mengatur kode status HTTP respons (e.g. `ctx.status(201)`) |
+
+#### Standar Exception HTTP
+APEX14 menyertakan kelas error standar yang otomatis diserialisasi ke format RFC-7807 Problem Details:
+
 ```ts
-import { auth, route, guard } from "apex14";
+import {
+  ValidationError,      // 400 Bad Request
+  AuthenticationError,  // 401 Unauthorized
+  AuthorizationError,   // 403 Forbidden
+  NotFoundError,        // 404 Not Found
+  ConflictError,        // 409 Conflict
+  RateLimitError        // 429 Too Many Requests
+} from "apex14";
 
-auth.configure({
-  secret: process.env.JWT_SECRET,
-  session: { strategy: "jwt", cookieName: "apex14_session" }
-});
-
-// Auto-mounts /auth/register, /auth/login, /auth/me, /auth/logout
-route("/dashboard", { GET: ({ user }) => ({ user: user.email }) }, { guard: "auth" });
-```
-
-### 2. Durable Step Functions & Saga Workflows (`workflow`)
-```ts
-import { workflow, route } from "apex14";
-
-const orderFulfillment = workflow("orders", async (ctx, payload: { orderId: string }) => {
-  const stock = await ctx.step("reserve-inventory", () => Inventory.reserve(payload.orderId), {
-    rollback: () => Inventory.release(payload.orderId) // Automatic saga compensation on failure!
-  });
-  await ctx.sleep("24h"); // Resumes safely across server restarts!
-  await ctx.step("send-receipt", () => Mailer.send(payload.orderId));
-});
-
-route("/checkout", { POST: ({ body }) => orderFulfillment.trigger(body) });
-```
-
-### 3. Reactive Live Queries (`live`)
-```ts
-import { live, model } from "apex14";
-
-const Messages = model("messages", MessageSchema);
-
-// Pushes initial snapshot over SSE and automatically streams live updates on model mutations!
-live("/rooms/:id/messages", ({ params }) => {
-  return Messages.findMany({ where: { roomId: params.id } });
-}, { model: "messages" });
-```
-
-### 4. Incident Replay & Self-Healing Telemetry (`heal`)
-```ts
-import { heal } from "apex14";
-
-heal.configure({ enabled: true, replayCapture: true });
-
-// Unhandled 500 exceptions are captured with sanitized state snapshots and AI remediation prompts.
-// Replay any production incident with 1 click in the APEX14 Studio GUI!
-```
-
-### 5. Type-Safe Dual-Mode Contract SDK (`contract`)
-```ts
-import { contract, route, Type } from "apex14";
-
-const CreateUser = contract({
-  body: Type.Object({ email: Type.String({ format: "email" }), name: Type.String() }),
-  response: Type.Object({ id: Type.String() }),
-  summary: "Create User"
-});
-
-// Powers runtime validation, OpenAPI 3.1, MCP AI tools, and @apex14/client in 1 line
-route("/users", CreateUser, ({ body }) => ({ id: "usr_1" }));
-```
-
-### 6. Micro-Benchmarking & Performance Verification
-```bash
-npx apex14 benchmark /users --duration 2000 --requests 1000
-```
-
-### 7. Autonomous AI Agent Runtime (`agent`)
-```ts
-import { agent, route, task } from "apex14";
-
-const supportAgent = agent("customer-support", {
-  system: "You are an AI support specialist.",
-  tools: [refundTask, "orders.findMany"],
-  memory: { strategy: "session" }
-});
-
-route("/api/chat", supportAgent.handleStream());
-```
-
-### 8. Kernel-Level Row-Level Multi-Tenancy (`tenant`)
-```ts
-import { tenant, model, route } from "apex14";
-
-tenant.configure({ header: "x-tenant-id", column: "tenant_id" });
-
-// Queries are transparently scoped to the active tenant without manual where clauses!
-route("/invoices", () => Invoices.all());
-```
-
-### 9. Temporal Time-Travel Data Auditing (`audit`)
-```ts
-import { model, audit } from "apex14";
-
-const Users = model("users", UserSchema, { audit: true });
-
-// Inspect historical state at any point in time
-const pastUser = Users.asOf("2026-01-01T00:00:00Z").findById(42);
-const changeHistory = audit.getHistory("users", 42);
-```
-
-### 10. Event Sourcing & Transactional Outbox (`event`)
-```ts
-import { event, route } from "apex14";
-
-const UserSignedUp = event<{ email: string }>("user.signed_up");
-
-route("/signup", async ({ body }) => {
-  const user = await User.create(body);
-  await UserSignedUp.publish({ email: user.email }, { transactional: true });
-  return user;
+route("/user", ({ query }) => {
+  if (!query.id) throw new ValidationError("Query parameter ?id wajib diisi");
+  throw new NotFoundError("User tidak ditemukan");
 });
 ```
 
-### 11. Native Chaos Engineering Simulator (`chaos`)
-```ts
-import { chaos } from "apex14";
+---
 
-chaos.inject({
-  routes: ["/payment/*"],
-  latencyMs: { min: 200, max: 800 },
-  failureRate: 0.10, // 10% simulated HTTP 503
-  enableWhen: () => process.env.NODE_ENV === "staging"
+### G. Real-Time Primitives (SSE & WebSockets)
+
+#### Server-Sent Events (`sse`)
+Gunakan generator async untuk streaming data satu arah (sangat cocok untuk LLM Token Streaming / AI Chat):
+
+```ts
+import { sse } from "apex14";
+
+sse("/ai/stream", async function* (ctx) {
+  const prompt = ctx.query.prompt;
+  yield { event: "start", data: { prompt } };
+
+  for (let i = 1; i <= 5; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    yield { event: "token", data: `Token chunk #${i} ` };
+  }
+
+  yield { event: "done", data: { finished: true } };
 });
 ```
 
-### 12. Multi-Region Geo-Routing & Replica Steering (`geo`)
+#### WebSockets (`ws`)
+Komunikasi dua arah berkecepatan tinggi dengan room pub/sub bawaan:
+
 ```ts
-import { route, geo } from "apex14";
+import { ws } from "apex14";
 
-route("/feed", {
-  GET: geo.steer({
-    regions: {
-      asia: () => TokyoReplica.getFeed(),
-      europe: () => FrankfurtReplica.getFeed(),
-      americas: () => VirginiaPrimary.getFeed()
-    },
-    fallback: () => VirginiaPrimary.getFeed()
-  })
-});
-```
-
-### 13. Native Distributed Locks & Atomic Mutex (`lock`)
-```ts
-import { lock, route } from "apex14";
-
-route("/checkout", async (ctx) => {
-  return await lock(`account:${ctx.body.accountId}`, { ttlMs: 5000 }, async () => {
-    // 100% race-condition free bank balance decrement or inventory deduction
-    return await processPayment(ctx.body);
-  });
-});
-```
-
-### 14. Tiered Rate Limiting & Token Cluster (`throttle`)
-```ts
-import { throttle, route } from "apex14";
-
-const limiter = throttle({
-  tiers: {
-    free: { limit: 100, window: "1m" },
-    pro: { limit: 1000, window: "1m" }
+ws("/ws/chat/:roomId", {
+  open: (peer) => {
+    peer.join(peer.params.roomId);
+    peer.publish(peer.params.roomId, `User ${peer.id} bergabung ke ruangan`);
   },
-  resolveTier: (ctx) => ctx.headers["x-tier"] || "free",
-  key: (ctx) => ctx.headers["x-api-key"] || ctx.ip
+  message: (peer, message) => {
+    // Broadcast pesan ke seluruh anggota room
+    peer.publish(peer.params.roomId, message);
+  },
+  close: (peer) => {
+    peer.leave(peer.params.roomId);
+  }
 });
-
-route("/search", handleSearch, { middleware: [limiter] });
-```
-
-### 15. Cryptographic Request Attestation (`verify`)
-```ts
-import { verify, route } from "apex14";
-
-route("/webhooks/settlement", handleSettlement, {
-  method: "POST",
-  middleware: [
-    verify.signedRequest({
-      secretOrKey: process.env.PARTNER_SECRET!,
-      maxDriftSeconds: 60
-    })
-  ]
-});
-```
-
-### 16. Schema-Driven Synthetic Mock Engine (`mock`)
-```ts
-import { mock, route, Type } from "apex14";
-
-const UserContract = Type.Object({
-  id: Type.String(),
-  email: Type.String({ format: "email" }),
-  name: Type.String(),
-  age: Type.Integer({ minimum: 18, maximum: 65 })
-});
-
-// Serve instant realistic synthetic data matching schema with 0 backend logic
-route("/api/users/mock", mock.fn(UserContract, { seed: 42 }));
-```
-
-### 17. Dynamic Zero-Downtime Hot-Patching (`patch`)
-```ts
-import { patch, route } from "apex14";
-
-// Hot-swap route logic live in-memory without restarting server or dropping WebSockets
-patch.route("/api/orders/discount", (ctx) => ({ rate: 0.25, event: "FLASH_SALE" }));
-
-// Instant rollback on demand
-patch.rollback("/api/orders/discount");
-```
-
-### 18. Native WebAssembly Isolated Sandbox (`wasm`)
-```ts
-import { wasm, route } from "apex14";
-
-const sandbox = await wasm.load(wasmBuffer, { timeoutMs: 2000 });
-
-route("/api/calc", async ({ body }) => {
-  return { result: await sandbox.run("calculate", body.a, body.b) };
-});
-```
-
-### 19. RFC 6902 JSON Patch & Incremental Sync (`delta`)
-```ts
-import { delta, route, db } from "apex14";
-
-route("/api/documents/:id", {
-  PATCH: delta.patch(async (id, patches) => {
-    const doc = await db("documents").find(id);
-    const patched = delta.apply(doc, patches);
-    await db("documents").update(id, patched);
-    return delta.diff(doc, patched);
-  })
-});
-```
-
-### 20. Attribute-Based Access Control (ABAC) Engine (`policy`)
-```ts
-import { policy, route, db } from "apex14";
-
-policy.define("document:edit", (user, doc) => {
-  return user.role === "admin" || (user.dept === doc.dept && doc.status === "draft");
-});
-
-route("/api/docs/:id", updateHandler, {
-  policy: { name: "document:edit", getResource: (ctx) => db("docs").find(ctx.params.id) }
-});
-```
-
-### 21. Zero-Memory Backpressured Transform & ETL Pipeline (`stream`)
-```ts
-import { stream, route, db } from "apex14";
-
-route("/api/exports/transactions.ndjson", () => {
-  return stream.fromQuery(db("transactions").cursor())
-    .filter((tx) => tx.status === "completed")
-    .transform((tx) => ({ id: tx.id, masked: mask(tx.card) }))
-    .toNdjson(); // Zero-memory streaming chunked HTTP response
-});
-```
-
-### 22. Deterministic Time-Warp Flight Recorder (`replay`)
-```ts
-import { replay, route } from "apex14";
-
-route("/api/checkout", handleCheckout, {
-  method: "POST",
-  middleware: [replay.record({ recordOnError: true })]
-});
-
-// Playback exact production cassette in local dev for 100% deterministic debugging
-const result = await replay.playback(tapeId);
-```
-
-### 23. Semantic Contract Regression & Golden-Master Engine (`snapshot`)
-```ts
-import { snapshot, testRequest } from "apex14";
-
-it("verifies zero regression", async () => {
-  const data = await (await testRequest("/api/user")).json();
-  // Masks dynamic timestamps & UUIDs automatically without false positives
-  snapshot.verify("user-golden-v1", data, { ignoreDynamic: ["token"] });
-});
-```
-
-### 24. Zero-Config Polyglot Client SDK Generator (`sdk`)
-```ts
-import { sdk } from "apex14";
-
-// Generates lightweight, zero-dependency client SDKs in memory
-const tsClient = sdk.generate({ language: "typescript" });
-const pyClient = sdk.generate({ language: "python" });
-const dartClient = sdk.generate({ language: "dart" });
-const goClient = sdk.generate({ language: "go" });
-```
-
-### 25. Embedded Vector Similarity & Semantic Search (`vector`)
-```ts
-import { vector, route } from "apex14";
-
-const index = vector.index({ dimensions: 1536, metric: "cosine" });
-index.upsert("doc_refund", embedding, { category: "billing" });
-
-route("/api/search", async ({ query }) => {
-  return index.search(await embed(query.q), { topK: 5 });
-});
-```
-
-### 26. Zero-Latency Dynamic Feature Flagging (`feature`)
-```ts
-import { feature, route } from "apex14";
-
-feature.define("new_checkout", { percentage: 0.25, enabledForTenants: ["vip"] });
-
-route("/checkout", feature.gate("new_checkout", v2Handler, v1Handler));
-```
-
-### 27. Automated PII Redaction & Privacy Shield (`mask`)
-```ts
-import { mask, route } from "apex14";
-
-// Automatic credit card (Luhn check), email, phone, and SSN redaction
-route("/user/:id", getUser, { middleware: [mask.middleware({ pii: true })] });
-```
-
-### 28. Native AI Prompt Injection Defense & Schema Healer (`guardrail`)
-```ts
-import { guardrail, route } from "apex14";
-
-route("/ai/chat", async ({ body }) => {
-  guardrail.assertSafePrompt(body.prompt); // Halts jailbreak attempts
-  const rawOutput = await llm(body.prompt);
-  return guardrail.repairAndValidate(rawOutput, ExpectedSchema);
-});
-```
-
-### 29. Declarative Zero-CLI Schema Migrator (`migrate`)
-```ts
-import { migrate, db } from "apex14";
-
-// Automatically detects missing columns against TypeBox schemas & applies ALTER TABLE
-migrate.register("users", UserSchema);
-await migrate.sync(db);
-```
-
-### 30. Prometheus & OpenTelemetry APM Metrics Engine (`metric`)
-```ts
-import { metric } from "apex14";
-
-const counter = metric.counter("checkouts_total");
-counter.inc(1, { status: "success" });
-
-// Serves standard GET /_metrics for Grafana & Prometheus
-metric.enableMetrics();
 ```
 
 ---
 
-## Performance Benchmarks
+### H. Background Tasks & Scheduler
 
-Honest and reproducible micro-benchmarks on macOS Darwin ARM64 running Node v24.5.0:
+#### Worker Task Dispatcher (`task()`)
+Eksekusi pekerjaan berat di background tanpa memblokir siklus respons HTTP:
+
+```ts
+import { task, route } from "apex14";
+
+// 1. Definisikan task
+export const sendWelcomeEmail = task("sendWelcomeEmail", async (data: { email: string; name: string }) => {
+  await mailerService.send(data.email, `Halo ${data.name}!`);
+  return { delivered: true };
+});
+
+// 2. Dispatch task secara non-blocking
+route("/register", async ({ body }) => {
+  const user = await User.create(body);
+  await sendWelcomeEmail.dispatch({ email: user.email, name: user.name });
+  return { registered: true };
+});
+```
+
+#### Cron Scheduler (`schedule()`)
+Penjadwalan interval pekerjaan otomatis tanpa dependensi cron sistem operasi:
+
+```ts
+import { schedule } from "apex14";
+
+// Setiap 30 menit
+schedule("30m", async () => {
+  console.log("Membersihkan session kadaluarsa...");
+  await db("sessions").where("expires_at", "<", new Date().toISOString()).delete();
+});
+
+// Menggunakan interval ekspresi
+schedule("1h", () => {
+  console.log("Sinkronisasi metrik berkala...");
+});
+```
+
+---
+
+### I. OpenAPI Documentation & Developer Studio
+
+APEX14 mengintegrasikan auto-documentation tanpa konfigurasi YAML manual:
+
+```ts
+import { enableDocs, route, Type } from "apex14";
+
+enableDocs({
+  title: "E-Commerce Enterprise API",
+  version: "2.0.0",
+  docsPath: "/docs",
+  specPath: "/openapi.json"
+});
+
+route("/checkout", async ({ body }) => {
+  return { orderId: "ord_123", status: "paid" };
+}, {
+  method: "POST",
+  summary: "Submit Keranjang Belanja",
+  description: "Memproses checkout pesanan dan melakukan penagihan pembayaran",
+  tags: ["Checkout"],
+  body: Type.Object({ cartId: Type.String() })
+});
+```
+
+Kunjungi `http://localhost:3000/docs` di browser untuk mengakses visual console Swagger/Scalar.
+
+---
+
+### J. Testing Engine (Sub-Millisecond E2E)
+
+APEX14 memiliki `testRequest()` yang memungkinkan pengujian rute secara in-memory murni tanpa perlu membuka socket port TCP/HTTP OS yang lambat:
+
+```ts
+import { describe, it, expect, beforeAll } from "vitest";
+import { testRequest } from "apex14";
+import { bootstrapApp } from "../src/app.js";
+
+describe("Application E2E Test", () => {
+  beforeAll(async () => {
+    process.env.DATABASE_URL = ":memory:";
+    await bootstrapApp();
+  });
+
+  it("Menguji respons rute /health", async () => {
+    const res = await testRequest("/health");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe("operational");
+  });
+
+  it("Menguji POST dengan validasi schema", async () => {
+    const res = await testRequest("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "admin@apex14.dev", password: "wrong" })
+    });
+    expect(res.status).toBe(401);
+  });
+});
+```
+
+---
+
+### K. 30 Quantum-Leap Advanced Primitives
+
+APEX14 dilengkapi dengan 30 modul enterprise terintegrasi langsung:
+
+1. **`auth`**: Direct engine session & credentials auto-route handler.
+2. **`workflow`**: Durable multi-step saga workflow dengan auto rollback kompensasi.
+3. **`live`**: Reactive SSE live-query yang otomatis mengirim push update saat data model berubah.
+4. **`heal`**: Flight recorder exception capture yang merekam error 500 beserta snapshot state untuk self-healing AI.
+5. **`contract`**: Dual-mode contract SDK yang memadukan OpenAPI, validasi runtime, dan client typing dalam 1 definisi.
+6. **`agent`**: Mount autonomous AI Agent tools ke dalam endpoint API streaming secara instan.
+7. **`exportMcpTools`**: Membuka protokol Model Context Protocol (MCP) server JSON-RPC 2.0 untuk AI agent (Cursor, Claude, OpenAI).
+8. **`tenant`**: Kernel-level row-level multi-tenancy yang otomatis mengisolasi query data per organisasi/penyewa.
+9. **`audit`**: Temporal time-traveling audit log untuk mengecek data historis pada titik waktu masa lalu (`User.asOf("2026-01-01")`).
+10. **`event`**: Transactional outbox event-driven pub/sub yang menjamin pengiriman pesan atomik dengan database.
+11. **`chaos`**: Chaos engineering simulator untuk simulasi latency acak dan error injeksi di staging.
+12. **`geo`**: Geo-routing cerdas yang mengarahkan trafik request ke replica database terdekat berdasarkan lokasi region.
+13. **`lock`**: Distributed atomic mutex lock untuk mencegah race condition pada operasi kritis (seperti saldo bank).
+14. **`throttle`**: Multi-tier dynamic rate limiting berdasarkan API Key atau tingkatan paket (Free, Pro, Enterprise).
+15. **`verify`**: Cryptographic request attestation dan verifikasi signature webhook partner.
+16. **`mock`**: Instant synthetic data generator yang otomatis membuat data tiruan realistis dari skema TypeBox.
+17. **`patch`**: Zero-downtime hot-patching untuk mengganti logika rute in-memory tanpa mematikan proses server.
+18. **`wasm`**: Sandbox isolasi WebAssembly untuk mengeksekusi kode biner dengan alokasi memori terkendali.
+19. **`delta`**: RFC 6902 JSON patch & diff engine untuk sinkronisasi state parsial.
+20. **`policy`**: Attribute-Based Access Control (ABAC) untuk penegakan aturan izin dinamis.
+21. **`stream`**: Zero-memory backpressured data streaming pipeline (ETL query ke NDJSON/CSV).
+22. **`replay`**: Deterministic cassette flight recorder untuk merekam dan memutar ulang bug produksi di komputer lokal.
+23. **`snapshot`**: Golden-master contract regression testing dengan masking dinamis otomatis.
+24. **`sdk`**: Polyglot SDK generator otomatis dalam TypeScript, Python, Go, dan Dart.
+25. **`vector`**: Embedded in-memory vector similarity index (Cosine/Euclidean) untuk semantic search.
+26. **`feature`**: Dynamic feature flags dengan alokasi persentase rollout dan targeting tenant.
+27. **`mask`**: AI Privacy Shield yang otomatis menyamarkan data sensitif PII (Kartu kredit, email, NIK/SSN).
+28. **`guardrail`**: Pertahanan prompt injection untuk aplikasi LLM dan auto schema repairer.
+29. **`migrate`**: Zero-CLI schema migrator yang mendeteksi perubahan skema TypeBox dan menjalankan `ALTER TABLE` otomatis.
+30. **`metric`**: Prometheus APM & OpenTelemetry metrics engine yang menyediakan endpoint `/_metrics`.
+
+---
+
+## CLI Tooling Reference
+
+CLI APEX14 menyediakan serangkaian perintah untuk produktivitas developer:
+
+```bash
+# 1. Membuat proyek baru dengan template standar modular
+npx create-apex14 my-api
+
+# 2. Diagnostik environment dan kesiapan sistem
+npx apex14 doctor
+
+# 3. Menampilkan seluruh tabel routing yang terdaftar di proyek aktif
+npx apex14 routes
+
+# 4. Generate komponen secara otomatis
+npx apex14 generate route orders
+npx apex14 generate middleware timer
+npx apex14 generate schema invoice
+
+# 5. Jalankan micro-benchmark performa rute
+npx apex14 benchmark /health --duration 2000 --requests 1000
+```
+
+---
+
+## Benchmark Performa
+
+Pengujian mikro-benchmark riil pada Apple Silicon (macOS Darwin ARM64, Node v24.5.0):
 
 ```bash
 pnpm bench
 ```
 
-| Route Pattern | Throughput (ops/sec) | Avg Latency |
+| Pola Rute | Throughput (ops/sec) | Rata-rata Latensi |
 |---|---|---|
-| Root Static (`/`) | **23,218,006** ops/sec | **43 ns/op** |
-| Single Param (`/users/:id`) | **3,864,066** ops/sec | **259 ns/op** |
-| Deep Static (`/api/v1/health/detailed`) | **2,799,932** ops/sec | **357 ns/op** |
-| Multi-Param (`/org/:o/prj/:p/iss/:i`) | **1,606,611** ops/sec | **622 ns/op** |
-| Wildcard Route (`/static/*filepath`) | **1,359,946** ops/sec | **735 ns/op** |
+| Root Static (`/`) | **23,218,006** ops/detik | **43 ns/op** |
+| Single Param (`/users/:id`) | **3,864,066** ops/detik | **259 ns/op** |
+| Deep Static (`/api/v1/health/detailed`) | **2,799,932** ops/detik | **357 ns/op** |
+| Multi-Param (`/org/:o/prj/:p/iss/:i`) | **1,606,611** ops/detik | **622 ns/op** |
+| Wildcard Route (`/static/*filepath`) | **1,359,946** ops/detik | **735 ns/op** |
 
 ---
 
-## Monorepo Architecture
+## Struktur Monorepo
 
 ```text
 apex14/
 ├── packages/
-│   ├── apex14/            # Umbrella export (Direct Function API)
-│   ├── core/               # Kernel, Scope & AsyncLocalStorage context
-│   ├── router/             # Radix-tree Trie Router
-│   ├── http/               # Universal Request Context & Serializer
-│   ├── validation/         # TypeBox-based validation engine
-│   ├── security/           # JWT, Scrypt, Rate Limit, CORS, SSRF
-│   ├── storage/            # File management, signatures & storage
-│   ├── database/           # SQLite driver & CRUD resource generator
-│   ├── client/             # End-to-end type-safe RPC client
-│   ├── runtime-node/       # Node.js http/https adapter
-│   ├── runtime-bun/        # Bun native serve adapter
-│   ├── cli/                # apex14 developer CLI
-│   └── create-apex14/      # Project scaffolder
-├── examples/
-│   ├── minimal/            # Pure Zero-Instance Direct API starter
-│   └── rest-api/           # Complete REST API with JWT & CRUD
-└── benchmarks/
-    └── router.bench.js     # Reproducible router performance suite
+│   ├── apex14/            # Umbrella package utama (Direct Function API)
+│   ├── core/               # Kernel, Scope, context AsyncLocalStorage & primitive registry
+│   ├── router/             # Radix-tree Trie Router berkecepatan tinggi
+│   ├── http/               # Universal Request Context, exception handling & serializer
+│   ├── validation/         # Validasi TypeBox & schema contract engine
+│   ├── security/           # JWT, Scrypt, Rate Limit, CORS, SSRF guard
+│   ├── storage/            # File management, signatures & LocalStorageProvider
+│   ├── database/           # SQLite driver & ORM fluent query builder
+│   ├── client/             # End-to-end type-safe client SDK (@apex14/client)
+│   ├── runtime-node/       # Adapter Node.js http/https
+│   ├── runtime-bun/        # Adapter Bun.serve native
+│   ├── cli/                # CLI engine (@apex14/cli)
+│   └── create-apex14/      # Scaffolder generator (create-apex14)
+├── examples/               # Contoh aplikasi siap pakai
+└── benchmarks/             # Suite pengujian performa benchmark
 ```
 
 ---
 
-## CLI Reference
+## Lisensi
 
-```bash
-# Diagnostic environment check
-apex14 doctor
-
-# List registered routes in active project
-apex14 routes
-
-# Generate components
-apex14 generate route users
-apex14 generate middleware logger
-apex14 generate schema product
-
-# Run dev server with hot reload
-apex14 dev
-```
-
----
-
-## License
-
-MIT © APEX14 Framework Authors.
+APEX14 dilisensikan di bawah lisensi terbuka [MIT License](LICENSE).
+Bebas digunakan untuk proyek komersial maupun personal.

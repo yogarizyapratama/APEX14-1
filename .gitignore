@@ -9,3 +9,5 @@ coverage
 uploads
 .env
 .env.local
+apex/
+my-api/
