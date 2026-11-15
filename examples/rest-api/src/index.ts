@@ -7,6 +7,7 @@ import {
   run,
   file,
   db,
+  model,
   resource,
   Type,
   Jwt,
@@ -20,18 +21,15 @@ import {
 
 const JWT_SECRET = process.env.JWT_SECRET || "enterprise-secure-jwt-secret-apex14-key";
 
-// 1. Database Setup
-const database = db("main");
-await database.execute(`
-  CREATE TABLE IF NOT EXISTS articles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    author TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TEXT DEFAULT NULL
-  );
-`);
+// 1. Zero-SQL Model Definition
+// No raw SQL, no CREATE TABLE queries. Schema automatically maps to database table!
+const ArticleSchema = Type.Object({
+  title: Type.String({ minLength: 3 }),
+  content: Type.String({ minLength: 5 }),
+  author: Type.String()
+});
+
+export const Article = model("articles", ArticleSchema);
 
 // 2. Security Middleware & Config
 secure({
@@ -85,16 +83,17 @@ route("/upload", {
   }
 }, { guard: "auth" });
 
-// 6. Direct CRUD Resource for Articles
+// 6. Direct CRUD Resource for Articles (Full REST API in 1 line)
 resource("articles", {
   database: "main",
-  schema: Type.Object({
-    title: Type.String({ minLength: 3 }),
-    content: Type.String({ minLength: 5 }),
-    author: Type.String()
-  }),
+  schema: ArticleSchema,
   allowedFields: ["title", "content", "author"],
   pagination: { default: 10, max: 50 }
+});
+
+// 7. Custom Routes Using the Model Directly (Zero Pure Query)
+route("/featured-articles", async () => {
+  return await Article.where("author", "admin").limit(5).get();
 });
 
 run(4000);

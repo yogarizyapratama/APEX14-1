@@ -98,13 +98,13 @@ import { route, group, use } from "apex14";
 
 group("/api/v1", () => {
   route("/users", {
-    GET: () => db("main").query("SELECT * FROM users"),
-    POST: ({ body }) => db("main").execute("INSERT INTO users (name) VALUES (?)", [body.name])
+    GET: () => User.all(),
+    POST: ({ body }) => User.create(body)
   });
 
   route("/users/:id", {
-    GET: ({ params }) => db("main").query("SELECT * FROM users WHERE id = ?", [params.id]),
-    DELETE: ({ params }) => db("main").execute("DELETE FROM users WHERE id = ?", [params.id])
+    GET: ({ params }) => User.find(params.id),
+    DELETE: ({ params }) => User.delete(params.id)
   });
 });
 ```
@@ -128,41 +128,46 @@ route("/users", {
 }, { body: UserSchema });
 ```
 
-### 4. Full ORM Database Engine (`db("table")`)
+### 4. Zero-Query Model & ORM Engine (`model()`)
 
-APEX14 includes an ultra-intuitive, fluent ORM query builder:
+APEX14 comes with an ultra-easy, zero-query ORM engine. **No raw SQL queries, no manual `CREATE TABLE` required**:
 
 ```ts
-import { route, db } from "apex14";
+import { route, model, Type } from "apex14";
 
-// 1. Create record
-const user = await db("users").create({
+// 1. Define model with TypeBox schema (tables auto-generate automatically!)
+const User = model("users", Type.Object({
+  name: Type.String(),
+  email: Type.String({ format: "email" }),
+  role: Type.String({ default: "member" })
+}), {
+  timestamps: true, // auto created_at & updated_at
+  softDelete: true  // auto deleted_at handling
+});
+
+// 2. Create record (auto returns inserted record with generated id and timestamps)
+const user = await User.create({
   name: "Alex",
   email: "alex@example.com",
   role: "admin"
 });
 
-// 2. Find many with filtering & sorting
-const admins = await db("users").findMany({
-  where: { role: "admin" },
-  orderBy: { created_at: "desc" },
-  limit: 20
-});
-
-// 3. Find single record by ID
-const profile = await db("users").findById(42);
+// 3. Query records
+const allUsers = await User.all();
+const user42 = await User.find(42);
+const admin = await User.findOne({ email: "admin@apex14.dev" });
 
 // 4. Fluent chain syntax
-const active = await db("users")
+const active = await User
   .where("role", "member")
   .where("age", ">=", 18)
   .orderBy("created_at", "DESC")
   .limit(10)
   .get();
 
-// 5. Update & Delete
-await db("users").where({ id: 42 }).update({ name: "Alex Updated" });
-await db("users").deleteById(42);
+// 5. Update & Delete (Zero SQL!)
+await User.update(42, { name: "Alex Updated" });
+await User.delete(42); // Soft deletes if softDelete is enabled!
 ```
 
 ### 5. Zero-Boilerplate CRUD Resources

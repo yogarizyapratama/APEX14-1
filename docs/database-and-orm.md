@@ -1,38 +1,47 @@
-# APEX14 — Full ORM & Database Engine
+# APEX14 — Full ORM & Zero-Query Database Engine
 
-APEX14 comes with a built-in, zero-dependency, ultra-easy ORM engine. It provides fluent query building, type-safe queries, automatic SQLite integration, atomic transactions, and automated schema helpers.
+APEX14 comes with a built-in, zero-dependency, ultra-intuitive ORM engine designed to **completely eliminate raw/pure SQL queries** from application code.
+
+### Core Philosophy
+- **Zero Raw Queries**: No `CREATE TABLE`, `SELECT *`, or string concatenations required.
+- **Auto Table Generation**: Database tables are automatically inferred from TypeBox schemas and generated on demand.
+- **Auto Timestamps & Soft Deletes**: Automatic `created_at`, `updated_at`, and `deleted_at` handling.
+- **Zero-Dependency SQLite**: Backed natively by modern embedded SQLite (`DatabaseSync`), saving state without external database servers.
 
 ---
 
-## 1. Quick Example
+## 1. Quick Start: The Zero-Query Model
 
 ```ts
-import { route, db, run } from "apex14";
+import { route, model, Type, run } from "apex14";
 
-// Automatically creates table if it does not exist
-await db.schema.createTableIfNotExists("users", {
-  id: "INTEGER PRIMARY KEY AUTOINCREMENT",
-  name: "TEXT NOT NULL",
-  email: "TEXT UNIQUE NOT NULL",
-  role: "TEXT DEFAULT 'user'",
-  created_at: "DATETIME DEFAULT CURRENT_TIMESTAMP"
+// 1. Define schema & model (Zero SQL! Table is auto-created automatically)
+const UserSchema = Type.Object({
+  name: Type.String(),
+  email: Type.String({ format: "email" }),
+  role: Type.String({ default: "member" })
 });
 
-// GET /users?role=admin
-route("/users", async ({ query }) => {
-  return await db("users").findMany({
-    where: query.role ? { role: query.role } : undefined,
-    orderBy: { id: "desc" },
-    limit: 20
-  });
+export const User = model("users", UserSchema);
+
+// 2. Direct Function Routes using the Model
+route("/users", {
+  // Get all users
+  GET: () => User.all(),
+
+  // Create user
+  POST: ({ body }) => User.create(body)
 });
 
-// POST /users
-route("/users", async ({ body }) => {
-  return await db("users").create({
-    name: body.name,
-    email: body.email
-  });
+route("/users/:id", {
+  // Find user by ID
+  GET: ({ params }) => User.find(params.id),
+
+  // Update user
+  PUT: ({ params, body }) => User.update(params.id, body),
+
+  // Delete user
+  DELETE: ({ params }) => User.delete(params.id)
 });
 
 run(3000);
@@ -40,176 +49,169 @@ run(3000);
 
 ---
 
-## 2. ORM Query API (`db("tableName")`)
+## 2. Model API Reference (`model()`)
 
-### 2.1 Inserting Records
+### 2.1 Model Options
 
 ```ts
-// Insert single record (returns created object with generated ID)
-const user = await db("users").create({
+const Product = model("products", ProductSchema, {
+  timestamps: true,  // Automatically manages created_at and updated_at (default: true)
+  softDelete: true   // Sets deleted_at on delete() and filters out deleted rows on all() (default: false)
+});
+```
+
+### 2.2 Inserting Records
+
+```ts
+// Create single record (returns created row with generated id and timestamps)
+const user = await User.create({
   name: "Alex",
   email: "alex@example.com",
   role: "admin"
 });
 console.log(user.id); // 1
+console.log(user.created_at); // "2026-11-15T11:00:00.000Z"
 
-// Insert multiple records in bulk
-const users = await db("users").createMany([
+// Bulk insert
+const users = await User.createMany([
   { name: "Jordan", email: "jordan@example.com" },
   { name: "Taylor", email: "taylor@example.com" }
 ]);
 ```
 
-### 2.2 Finding Records
+### 2.3 Querying Records
 
-#### By ID
 ```ts
-const user = await db("users").findById(42);
-// Returns null if not found
-```
+// 1. Fetch all active records
+const allUsers = await User.all();
 
-#### Find First (Single Record)
-```ts
-const admin = await db("users").findFirst({
-  where: { role: "admin" }
-});
-```
+// 2. Find by primary key (id)
+const user = await User.find(42);
+// or: await User.findById(42);
 
-#### Find Many with Filtering & Sorting
-```ts
-const activeUsers = await db("users").findMany({
+// 3. Find one record matching conditions
+const admin = await User.findOne({ email: "admin@apex14.dev" });
+
+// 4. Find many with structured options
+const members = await User.findMany({
   where: { role: "member" },
   orderBy: { created_at: "desc" },
-  limit: 25,
-  offset: 0,
-  select: ["id", "name", "email"]
+  limit: 20,
+  offset: 0
 });
 ```
 
----
+### 2.4 Fluent Query Chaining on Models
 
-## 3. Fluent Chain Syntax
-
-You can build queries using method chaining:
+The `User` model also provides fluent query chaining:
 
 ```ts
-const results = await db("users")
-  .select("id", "name", "role")
+const topUsers = await User
   .where("role", "admin")
-  .where("age", ">=", 21)
+  .where("score", ">=", 90)
   .orderBy("created_at", "DESC")
   .limit(10)
-  .offset(20)
   .get();
 
-// Retrieve first matching record
-const single = await db("users")
-  .where({ email: "target@example.com" })
-  .first();
+// Count
+const totalAdmins = await User.where("role", "admin").count();
+
+// First match
+const firstActive = await User.where("status", "active").first();
 ```
 
-### Supported Where Operators
-- Equality: `.where({ role: "admin" })` or `.where("role", "admin")`
-- Comparison: `.where("score", ">=", 80)` or `.where("status", "!=", "banned")`
-- Pattern matching: `.where("name", "LIKE", "%alex%")`
-- IN clause: `.where({ id: [1, 2, 3] })`
-- NULL checks: `.where({ deleted_at: null })`
-- OR conditions: `.orWhere("role", "superadmin")`
+### 2.5 Updating Records
+
+```ts
+// Update by ID directly
+const updated = await User.update(1, {
+  name: "Alex Updated"
+});
+
+// Update with condition
+await User.update({ role: "pending" }, { role: "member" });
+```
+
+### 2.6 Deleting Records
+
+```ts
+// Hard delete (or soft delete if softDelete: true)
+const success = await User.delete(1);
+
+// Delete with conditions
+await User.delete({ role: "inactive" });
+```
 
 ---
 
-## 4. Updating Records
+## 3. Automatic Schema Inference
+
+When you supply a TypeBox schema to `model("name", schema)`, APEX14 maps the types to SQLite column definitions:
+
+| TypeBox Property | Inferred Column Type |
+|---|---|
+| `Type.String()` | `TEXT` |
+| `Type.Integer()` | `INTEGER` |
+| `Type.Number()` | `REAL` |
+| `Type.Boolean()` | `INTEGER` (0 or 1) |
+| `id` (reserved) | `INTEGER PRIMARY KEY AUTOINCREMENT` |
+| `created_at` (timestamps: true) | `DATETIME DEFAULT CURRENT_TIMESTAMP` |
+| `updated_at` (timestamps: true) | `DATETIME DEFAULT CURRENT_TIMESTAMP` |
+| `deleted_at` (softDelete: true) | `DATETIME DEFAULT NULL` |
+
+---
+
+## 4. Fluent Table Query Builder (`db("tableName")`)
+
+If you prefer building queries directly on arbitrary tables without defining a model schema:
 
 ```ts
-// Update using where conditions
-const { rowsAffected } = await db("users")
-  .where({ id: 5 })
-  .update({ name: "Alex Updated", role: "moderator" });
+import { db } from "apex14";
 
-// Update by ID directly
-const updatedUser = await db("users").updateById(5, {
-  name: "Alex Updated"
+const results = await db("orders")
+  .select("id", "total", "customer_id")
+  .where("total", ">", 100)
+  .where({ status: "completed" })
+  .orderBy("id", "DESC")
+  .limit(50)
+  .get();
+```
+
+---
+
+## 5. Instant CRUD Resources in 1 Line (`resource()`)
+
+For instant production REST APIs, combine models with the `resource()` engine:
+
+```ts
+import { resource, Type } from "apex14";
+
+resource("tasks", {
+  schema: Type.Object({
+    title: Type.String({ minLength: 3 }),
+    completed: Type.Boolean({ default: false })
+  }),
+  allowedFields: ["title", "completed"],
+  pagination: { default: 10, max: 100 }
 });
 ```
 
----
-
-## 5. Deleting Records
-
-```ts
-// Delete by ID
-const success = await db("users").deleteById(5);
-
-// Delete with conditions
-const { rowsAffected } = await db("users")
-  .where("status", "inactive")
-  .delete();
-```
+This single declaration immediately serves:
+- `GET /tasks` (with pagination `?page=1&limit=10`)
+- `GET /tasks/:id`
+- `POST /tasks` (with full TypeBox body validation)
+- `PUT /tasks/:id` (with update validation)
+- `DELETE /tasks/:id`
 
 ---
 
-## 6. Counting & Existence
+## 6. Atomic Transactions
 
-```ts
-// Count total records
-const total = await db("users").count();
-
-// Count with conditions
-const adminCount = await db("users")
-  .where({ role: "admin" })
-  .count();
-
-// Check if any matching record exists
-const exists = await db("users")
-  .where({ email: "test@example.com" })
-  .exists(); // true | false
-```
-
----
-
-## 7. Atomic Transactions
-
-Run multiple queries atomically with automatic `ROLLBACK` on failure:
+Execute multiple mutations atomically:
 
 ```ts
 await db.transaction(async (tx) => {
   await tx.execute("UPDATE accounts SET balance = balance - 100 WHERE id = ?", [1]);
   await tx.execute("UPDATE accounts SET balance = balance + 100 WHERE id = ?", [2]);
 });
-```
-
----
-
-## 8. Schema Migrations & Table Creation
-
-APEX14 provides clean DDL helpers:
-
-```ts
-await db.schema.createTableIfNotExists("products", {
-  id: "INTEGER PRIMARY KEY AUTOINCREMENT",
-  title: "TEXT NOT NULL",
-  price: "REAL NOT NULL",
-  stock: "INTEGER DEFAULT 0",
-  created_at: "DATETIME DEFAULT CURRENT_TIMESTAMP"
-});
-
-// Drop table
-await db.schema.dropTableIfExists("temp_logs");
-```
-
----
-
-## 9. Raw SQL Escape Hatch
-
-When you need custom joins, window functions, or complex queries:
-
-```ts
-// Parameterized raw query
-const reports = await db.raw<{ author: string; totalPosts: number }>(
-  `SELECT author, COUNT(*) as totalPosts FROM articles GROUP BY author HAVING totalPosts > ?`,
-  [5]
-);
-
-// Execute command
-await db.execute("VACUUM");
 ```

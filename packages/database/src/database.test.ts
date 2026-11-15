@@ -3,6 +3,7 @@ import {
   SqliteDatabaseClient,
   configureDatabase,
   db,
+  model,
   resource
 } from "./index.js";
 import { createScope, withScope } from "@apex14/core";
@@ -198,6 +199,96 @@ describe("@apex14/database", () => {
         const notFoundRes = await scope.handle(new Request(`http://localhost/users/${userId}`));
         expect(notFoundRes.status).toBe(404);
       });
+    });
+  });
+
+  describe("Zero-Query Model Engine (model('tasks'))", () => {
+    const TaskSchema = Type.Object({
+      title: Type.String(),
+      completed: Type.Boolean(),
+      priority: Type.Integer()
+    });
+
+    it("auto-creates table and executes all CRUD operations without any SQL", async () => {
+      // 1. Define model - zero CREATE TABLE DDL needed!
+      const Task = model("tasks", TaskSchema);
+
+      // 2. Create
+      const created = await Task.create({
+        title: "Master APEX14 ORM",
+        completed: 0,
+        priority: 1
+      });
+
+      expect(created.id).toBeDefined();
+      expect(created.title).toBe("Master APEX14 ORM");
+      expect(created.created_at).toBeDefined();
+
+      const taskId = created.id;
+
+      // 3. Find by ID
+      const found = await Task.find(taskId);
+      expect(found).not.toBeNull();
+      expect(found?.title).toBe("Master APEX14 ORM");
+
+      // 4. Find One with query condition
+      const matched = await Task.findOne({ title: "Master APEX14 ORM" });
+      expect(matched?.id).toBe(taskId);
+
+      // 5. Update
+      await Task.update(taskId, { completed: 1 });
+      const updated = await Task.find(taskId);
+      expect(updated?.completed).toBe(1);
+
+      // 6. Count
+      const count = await Task.count();
+      expect(count).toBe(1);
+
+      // 7. Fluent chained where
+      const results = await Task.where("priority", 1).get();
+      expect(results.length).toBe(1);
+
+      // 8. Delete
+      const deleted = await Task.delete(taskId);
+      expect(deleted).toBe(true);
+
+      const afterDel = await Task.find(taskId);
+      expect(afterDel).toBeNull();
+    });
+
+    it("supports soft deletion seamlessly without SQL", async () => {
+      const ItemSchema = Type.Object({
+        name: Type.String()
+      });
+
+      const Item = model("inventory_items", ItemSchema, { softDelete: true });
+
+      const item = await Item.create({ name: "Widget A" });
+      expect(item.id).toBeDefined();
+
+      // Soft delete
+      const deleted = await Item.delete(item.id);
+      expect(deleted).toBe(true);
+
+      // Should be excluded from .all()
+      const all = await Item.all();
+      expect(all.find((i: any) => i.id === item.id)).toBeUndefined();
+
+      // Verify row still exists in raw DB with deleted_at set
+      const rawRows = await db.query("SELECT * FROM inventory_items WHERE id = ?", [item.id]);
+      expect(rawRows.length).toBe(1);
+      expect(rawRows[0].deleted_at).not.toBeNull();
+    });
+
+    it("works via db.model() helper", async () => {
+      const NoteSchema = Type.Object({ content: Type.String() });
+      const Note = db.model("quick_notes", NoteSchema);
+
+      const note = await Note.create({ content: "Zero pure query note" });
+      expect(note.id).toBeDefined();
+
+      const found = await Note.find(note.id);
+      expect(found?.content).toBe("Zero pure query note");
     });
   });
 });

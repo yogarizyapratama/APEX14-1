@@ -12,8 +12,8 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 2. [**Direct Function API & Architecture**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/direct-function-api.md)
    - Zero-Instance DX, Core functions, Auto-serialization, Route groups, Context isolation.
 
-3. [**Full ORM & Database Engine**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/database-and-orm.md)
-   - Fluent query builder (`db("users")`), `findMany`, `create`, `update`, `delete`, where operators, schema helpers, transactions, and raw SQL.
+3. [**Zero-Query Model & Full ORM Engine**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/database-and-orm.md)
+   - Zero raw queries, automated table generation from schemas, `model()`, fluent query builder (`db("users")`), `findMany`, `create`, `update`, `delete`, soft deletes, timestamps, and transactions.
 
 4. [**TypeBox Validation & Contracts**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/validation-and-contracts.md)
    - End-to-end type safety, TypeBox schema definitions, static type inference, formatted error messages.

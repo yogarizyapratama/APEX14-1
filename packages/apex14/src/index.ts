@@ -36,8 +36,17 @@ export {
 // Storage & Files
 export { file, store, configureStorage } from "@apex14/storage";
 
-// Database & Resources
-export { db, configureDatabase, resource, SqliteDatabaseClient } from "@apex14/database";
+// Database, Models & Resources
+export {
+  db,
+  model,
+  Model,
+  type ModelOptions,
+  typeBoxToSqlType,
+  configureDatabase,
+  resource,
+  SqliteDatabaseClient
+} from "@apex14/database";
 
 // HTTP Primitives & Errors
 export {

@@ -82,6 +82,7 @@ export function configureDatabase(client: DatabaseClient, name: string = "defaul
 export interface DbInterface {
   <T = any>(tableOrClientName: string): ModelQuery<T>;
   table<T = any>(tableName: string, clientName?: string): ModelQuery<T>;
+  model<T = any>(tableName: string, schema?: any, options?: any): any;
   client(name?: string): DatabaseClient;
   query<T = any>(sql: string, params?: any[]): Promise<T[]>;
   execute(sql: string, params?: any[]): Promise<{ rowsAffected: number; lastInsertRowid?: number | bigint }>;
@@ -109,6 +110,14 @@ export const db: DbInterface = Object.assign(
     table<T = any>(tableName: string, clientName?: string): ModelQuery<T> {
       const client = clientName ? (dbClients.get(clientName) || defaultDb) : defaultDb;
       return new ModelQuery<T>(tableName, client);
+    },
+
+    model<T = any>(tableName: string, schema?: any, options?: any): any {
+      const fn = (db as any)._modelFactory;
+      if (typeof fn === "function") {
+        return fn(tableName, schema, options);
+      }
+      throw new Error("Model factory not initialized. Import 'model' from '@apex14/database'.");
     },
 
     client(name: string = "default"): DatabaseClient {
