@@ -4,7 +4,8 @@
   "description": "Unified database abstraction, embedded SQLite, and CRUD resource engine for APEX14",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,5 +27,18 @@
   "devDependencies": {
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yogarizyapratama/APEX14-1.git",
+    "directory": "packages/database"
+  },
+  "bugs": {
+    "url": "https://github.com/yogarizyapratama/APEX14-1/issues"
+  },
+  "homepage": "https://github.com/yogarizyapratama/APEX14-1#readme"
 }

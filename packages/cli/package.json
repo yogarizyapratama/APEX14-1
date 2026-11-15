@@ -4,7 +4,8 @@
   "description": "Developer productivity CLI engine for APEX14",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "bin": {
     "apex14": "./dist/bin.js"
@@ -29,5 +30,18 @@
     "@types/node": "^22.10.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yogarizyapratama/APEX14-1.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/yogarizyapratama/APEX14-1/issues"
+  },
+  "homepage": "https://github.com/yogarizyapratama/APEX14-1#readme"
 }

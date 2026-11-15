@@ -4,7 +4,8 @@
   "description": "Bun native runtime adapter for APEX14",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,5 +24,18 @@
   },
   "devDependencies": {
     "typescript": "^5.7.2"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yogarizyapratama/APEX14-1.git",
+    "directory": "packages/runtime-bun"
+  },
+  "bugs": {
+    "url": "https://github.com/yogarizyapratama/APEX14-1/issues"
+  },
+  "homepage": "https://github.com/yogarizyapratama/APEX14-1#readme"
 }
