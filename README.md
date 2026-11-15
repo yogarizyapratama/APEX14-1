@@ -598,6 +598,80 @@ route("/api/calc", async ({ body }) => {
 });
 ```
 
+### 19. RFC 6902 JSON Patch & Incremental Sync (`delta`)
+```ts
+import { delta, route, db } from "apex14";
+
+route("/api/documents/:id", {
+  PATCH: delta.patch(async (id, patches) => {
+    const doc = await db("documents").find(id);
+    const patched = delta.apply(doc, patches);
+    await db("documents").update(id, patched);
+    return delta.diff(doc, patched);
+  })
+});
+```
+
+### 20. Attribute-Based Access Control (ABAC) Engine (`policy`)
+```ts
+import { policy, route, db } from "apex14";
+
+policy.define("document:edit", (user, doc) => {
+  return user.role === "admin" || (user.dept === doc.dept && doc.status === "draft");
+});
+
+route("/api/docs/:id", updateHandler, {
+  policy: { name: "document:edit", getResource: (ctx) => db("docs").find(ctx.params.id) }
+});
+```
+
+### 21. Zero-Memory Backpressured Transform & ETL Pipeline (`stream`)
+```ts
+import { stream, route, db } from "apex14";
+
+route("/api/exports/transactions.ndjson", () => {
+  return stream.fromQuery(db("transactions").cursor())
+    .filter((tx) => tx.status === "completed")
+    .transform((tx) => ({ id: tx.id, masked: mask(tx.card) }))
+    .toNdjson(); // Zero-memory streaming chunked HTTP response
+});
+```
+
+### 22. Deterministic Time-Warp Flight Recorder (`replay`)
+```ts
+import { replay, route } from "apex14";
+
+route("/api/checkout", handleCheckout, {
+  method: "POST",
+  middleware: [replay.record({ recordOnError: true })]
+});
+
+// Playback exact production cassette in local dev for 100% deterministic debugging
+const result = await replay.playback(tapeId);
+```
+
+### 23. Semantic Contract Regression & Golden-Master Engine (`snapshot`)
+```ts
+import { snapshot, testRequest } from "apex14";
+
+it("verifies zero regression", async () => {
+  const data = await (await testRequest("/api/user")).json();
+  // Masks dynamic timestamps & UUIDs automatically without false positives
+  snapshot.verify("user-golden-v1", data, { ignoreDynamic: ["token"] });
+});
+```
+
+### 24. Zero-Config Polyglot Client SDK Generator (`sdk`)
+```ts
+import { sdk } from "apex14";
+
+// Generates lightweight, zero-dependency client SDKs in memory
+const tsClient = sdk.generate({ language: "typescript" });
+const pyClient = sdk.generate({ language: "python" });
+const dartClient = sdk.generate({ language: "dart" });
+const goClient = sdk.generate({ language: "go" });
+```
+
 ---
 
 ## Performance Benchmarks

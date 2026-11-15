@@ -113,3 +113,21 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 
 36. [**Native WebAssembly Isolated Sandbox (`wasm`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/wasm-sandboxing.md)
     - Secure W3C WebAssembly runner with memory bounding, timeout deadlines, and safe guest execution across all runtimes.
+
+37. [**RFC 6902 JSON Patch & Incremental Sync (`delta`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/delta-patching.md)
+    - Minimal object/array diff computation, atomic patch application, and standard HTTP PATCH route handler wrapper.
+
+38. [**Attribute-Based Access Control (ABAC) Engine (`policy`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/abac-policy-engine.md)
+    - Fine-grained declarative policy authorization based on user attributes, resource state, and runtime context.
+
+39. [**Zero-Memory Backpressured Transform & ETL Pipeline (`stream`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/streaming-etl-pipeline.md)
+    - Lazy backpressured streaming pipeline for massive datasets with streaming NDJSON and CSV responses.
+
+40. [**Deterministic Time-Warp Flight Recorder (`replay`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/flight-recorder-replay.md)
+    - Full in-flight request, response, and error capture into replay cassettes for 100% deterministic local debugging.
+
+41. [**Semantic Contract Regression & Golden-Master Engine (`snapshot`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/semantic-snapshot-testing.md)
+    - Anti-brittle snapshot testing with automatic semantic masking of dynamic timestamps and UUIDs with path-level diffs.
+
+42. [**Zero-Config Polyglot Client SDK Generator (`sdk`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/polyglot-sdk-generator.md)
+    - Automated in-memory code generation of idiomatic, zero-dependency client SDKs for TypeScript, Python, Dart, and Go.

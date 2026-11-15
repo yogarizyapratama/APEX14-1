@@ -34,6 +34,12 @@ import {
   mock,
   patch,
   wasm,
+  delta,
+  policy,
+  stream,
+  replay,
+  snapshot,
+  sdk,
   exportMcpTools,
   getOpenApiSpec,
   enableDocs,
@@ -1224,6 +1230,274 @@ describe("@apex14/core — Direct Function API", () => {
 
       const sum2 = await sandbox.run<number>("add", -10, 25);
       expect(sum2).toBe(15);
+    });
+  });
+
+  describe("RFC 6902 JSON Patch & Incremental Sync (delta)", () => {
+    it("computes minimal RFC 6902 diff and applies patches immutably", () => {
+      const original = {
+        title: "Initial Doc",
+        tags: ["alpha", "beta"],
+        meta: { views: 10, author: "Alice" }
+      };
+
+      const updated = {
+        title: "Updated Doc",
+        tags: ["alpha", "gamma"],
+        meta: { views: 25, author: "Alice", published: true }
+      };
+
+      // 1. Compute diff
+      const patches = delta.diff(original, updated);
+      expect(patches.length).toBeGreaterThan(0);
+
+      // 2. Apply patches to original
+      const reconstructed = delta.apply(original, patches);
+      expect(reconstructed).toEqual(updated);
+      // Original remains untouched
+      expect(original.title).toBe("Initial Doc");
+    });
+
+    it("handles delta.patch route handler seamlessly", async () => {
+      const scope = createScope();
+      let documentState = { id: "doc-1", title: "Original", status: "draft" };
+
+      scope.route(
+        "/api/docs/:id",
+        {
+          PATCH: delta.patch(async (id, patches) => {
+            documentState = delta.apply(documentState, patches);
+            return documentState;
+          })
+        }
+      );
+
+      const res = await scope.handle(
+        new Request("http://localhost/api/docs/doc-1", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify([
+            { op: "replace", path: "/title", value: "Patched Title" },
+            { op: "replace", path: "/status", value: "published" }
+          ])
+        })
+      );
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.title).toBe("Patched Title");
+      expect(data.status).toBe("published");
+    });
+  });
+
+  describe("Attribute-Based Access Control (ABAC) Engine (policy)", () => {
+    it("evaluates dynamic attribute-based policies and authorizes requests", async () => {
+      policy.define("document:edit", (user: any, doc: any) => {
+        if (!user) return false;
+        if (user.role === "admin") return true;
+        return user.departmentId === doc?.departmentId && doc?.status === "draft";
+      });
+
+      const adminUser = { id: "u1", role: "admin", departmentId: "eng" };
+      const regularUser = { id: "u2", role: "editor", departmentId: "eng" };
+      const otherDeptUser = { id: "u3", role: "editor", departmentId: "marketing" };
+
+      const draftDoc = { id: "d1", departmentId: "eng", status: "draft" };
+      const publishedDoc = { id: "d2", departmentId: "eng", status: "published" };
+
+      // Admin can edit anything
+      expect(await policy.allows(adminUser, "document:edit", publishedDoc)).toBe(true);
+
+      // Regular user can edit draft in same department
+      expect(await policy.allows(regularUser, "document:edit", draftDoc)).toBe(true);
+
+      // Regular user cannot edit published doc
+      expect(await policy.allows(regularUser, "document:edit", publishedDoc)).toBe(false);
+
+      // Other department user cannot edit doc
+      expect(await policy.allows(otherDeptUser, "document:edit", draftDoc)).toBe(false);
+
+      // Throws AuthorizationError when unauthorized
+      await expect(policy.authorize(otherDeptUser, "document:edit", draftDoc)).rejects.toThrow("Access denied");
+    });
+
+    it("auto-injects policy enforcement when declared in route options", async () => {
+      const scope = createScope();
+
+      policy.define("invoice:view", (user: any) => user?.role === "finance");
+
+      scope.route("/api/finance/invoices", () => [{ id: "inv_1", amount: 500 }], {
+        policy: "invoice:view"
+      });
+
+      // Anonymous / unauthorized call fails with 403
+      const deniedRes = await scope.handle(new Request("http://localhost/api/finance/invoices"));
+      expect(deniedRes.status).toBe(403);
+    });
+  });
+
+  describe("Zero-Memory Backpressured Transform & ETL Pipeline (stream)", () => {
+    it("lazily transforms, filters, and batches data in streaming pipeline", async () => {
+      const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+      const pipeline = stream
+        .from(numbers)
+        .filter((n) => n % 2 === 0) // [2, 4, 6, 8, 10]
+        .transform((n) => n * 10)   // [20, 40, 60, 80, 100]
+        .batch(2);                  // [[20, 40], [60, 80], [100]]
+
+      const batches = await pipeline.collect();
+      expect(batches).toEqual([[20, 40], [60, 80], [100]]);
+    });
+
+    it("generates streaming NDJSON response without buffering entire payload in memory", async () => {
+      const records = [
+        { id: 1, name: "Alpha" },
+        { id: 2, name: "Beta" }
+      ];
+
+      const res = stream.from(records).toNdjson();
+      expect(res.headers.get("content-type")).toContain("application/x-ndjson");
+
+      const bodyText = await res.text();
+      const lines = bodyText.trim().split("\n").map((l) => JSON.parse(l));
+      expect(lines).toEqual(records);
+    });
+
+    it("generates streaming CSV response", async () => {
+      const rows = [
+        { sku: "A1", qty: 5 },
+        { sku: "B2", qty: 12 }
+      ];
+
+      const res = stream.from(rows).toCsv(["sku", "qty"]);
+      expect(res.headers.get("content-type")).toContain("text/csv");
+
+      const csvText = await res.text();
+      expect(csvText).toContain("sku,qty\nA1,5\nB2,12");
+    });
+  });
+
+  describe("Deterministic Time-Warp Flight Recorder (replay)", () => {
+    it("records requests into replay cassette and reproduces execution in playback", async () => {
+      const scope = createScope();
+
+      scope.route("/api/calculate-tax", (ctx) => {
+        const income = ctx.body?.income || 0;
+        return { income, tax: income * 0.2 };
+      }, {
+        method: "POST",
+        middleware: [replay.record()]
+      });
+
+      // 1. Initial request to record
+      const req = new Request("http://localhost/api/calculate-tax", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ income: 50000 })
+      });
+
+      const initialRes = await scope.handle(req);
+      expect(initialRes.status).toBe(200);
+
+      // 2. Verify cassette was recorded
+      const tapes = replay.allTapes();
+      expect(tapes.length).toBeGreaterThan(0);
+      const tape = tapes[tapes.length - 1]!;
+      expect(tape.request.pathname).toBe("/api/calculate-tax");
+      expect(tape.response?.status).toBe(200);
+      expect(tape.response?.body).toEqual({ income: 50000, tax: 10000 });
+
+      // 3. Playback recorded cassette against scope
+      const playbackResult = await replay.playback(tape, scope);
+      expect(playbackResult.status).toBe(200);
+      expect(playbackResult.body).toEqual({ income: 50000, tax: 10000 });
+    });
+  });
+
+  describe("Semantic Contract Regression & Golden-Master (snapshot)", () => {
+    it("masks dynamic timestamps and UUIDs while ensuring deterministic structure matches", () => {
+      const liveData = {
+        userId: "550e8400-e29b-41d4-a716-446655440000",
+        createdAt: "2026-11-15T12:00:00.000Z",
+        profile: {
+          username: "alex_01",
+          sessionToken: "sec_abc123xyz"
+        }
+      };
+
+      // Mask semantic dynamic values
+      const masked = snapshot.maskSemantic(liveData, {
+        ignoreDynamic: ["sessionToken"]
+      });
+
+      expect(masked.userId).toBe("<UUID>");
+      expect(masked.createdAt).toBe("<ISO_DATE>");
+      expect(masked.profile.sessionToken).toBe("<DYNAMIC_VALUE>");
+      expect(masked.profile.username).toBe("alex_01");
+
+      // Verify golden master
+      const result1 = snapshot.verify("user-snapshot-1", liveData, {
+        ignoreDynamic: ["sessionToken"]
+      });
+      expect(result1.match).toBe(true);
+
+      // Same structure with different dynamic timestamp passes
+      const laterData = {
+        userId: "123e4567-e89b-12d3-a456-426614174000",
+        createdAt: "2026-12-01T15:30:00.000Z",
+        profile: {
+          username: "alex_01",
+          sessionToken: "sec_different"
+        }
+      };
+
+      const result2 = snapshot.verify("user-snapshot-1", laterData, {
+        ignoreDynamic: ["sessionToken"]
+      });
+      expect(result2.match).toBe(true);
+
+      // Value alteration fails
+      const corruptedData = {
+        ...laterData,
+        profile: { ...laterData.profile, username: "tampered_user" }
+      };
+
+      expect(() => {
+        snapshot.verify("user-snapshot-1", corruptedData, {
+          ignoreDynamic: ["sessionToken"]
+        });
+      }).toThrow("Snapshot mismatch");
+    });
+  });
+
+  describe("Zero-Config Polyglot Client SDK Generator (sdk)", () => {
+    it("generates idiomatic client SDKs across TypeScript, Python, Dart, and Go", () => {
+      const scope = createScope();
+      scope.route("/api/users", () => []);
+      scope.route("/api/users/:id", () => ({}));
+
+      // TypeScript
+      const tsCode = sdk.generate({ language: "typescript", scope });
+      expect(tsCode).toContain("export class ApexClient");
+      expect(tsCode).toContain("getUsers");
+      expect(tsCode).toContain("getUsersById");
+
+      // Python
+      const pyCode = sdk.generate({ language: "python", scope });
+      expect(pyCode).toContain("class ApexClient:");
+      expect(pyCode).toContain("def get_users(");
+      expect(pyCode).toContain("def get_users_by_id(");
+
+      // Dart
+      const dartCode = sdk.generate({ language: "dart", scope });
+      expect(dartCode).toContain("class ApexClient {");
+      expect(dartCode).toContain("Future<dynamic> getUsers(");
+
+      // Go
+      const goCode = sdk.generate({ language: "go", scope });
+      expect(goCode).toContain("type ApexClient struct {");
+      expect(goCode).toContain("func (c *ApexClient) GetUsers(");
     });
   });
 });

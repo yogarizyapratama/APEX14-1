@@ -92,6 +92,12 @@ export { verify, ApexVerifyEngine, type VerifySignedOptions } from "./verify.js"
 export { mock, ApexMockEngine, type MockOptions } from "./mock.js";
 export { patch, ApexPatchEngine, type PatchRecord, type PatchListener } from "./patch.js";
 export { wasm, ApexWasmEngine, ApexWasmInstance, WasmExecutionError, type WasmOptions } from "./wasm.js";
+export { delta, ApexDeltaEngine, type PatchOperation, type PatchOpType } from "./delta.js";
+export { policy, ApexPolicyEngine, type PolicyPredicate } from "./policy.js";
+export { stream, ApexStreamEngine, ApexStreamPipeline } from "./stream.js";
+export { replay, ApexReplayEngine, type ReplayCassette, type ReplayRecordOptions } from "./replay.js";
+export { snapshot, ApexSnapshotEngine, SnapshotMismatchError, type SnapshotOptions } from "./snapshot.js";
+export { sdk, ApexSdkEngine, type SdkLanguage, type SdkGenerateOptions } from "./sdk.js";
 
 export function group(
   prefix: string,

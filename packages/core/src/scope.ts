@@ -36,6 +36,7 @@ import { cache, type CacheOptions } from "./cache.js";
 import { heal } from "./heal.js";
 import { tenant } from "./tenant.js";
 import { chaos } from "./chaos.js";
+import { policy } from "./policy.js";
 
 interface GroupContext {
   prefix: string;
@@ -112,10 +113,24 @@ export class ApexScope {
       });
     }
 
+    // Auto-create policy middleware if policy option is provided
+    const policyMiddleware: Middleware[] = [];
+    if (options.policy) {
+      const policyName = typeof options.policy === "string" ? options.policy : options.policy.name;
+      const getResource = typeof options.policy === "object" ? options.policy.getResource : undefined;
+      policyMiddleware.push(policy.middleware(policyName, getResource));
+    }
+
     // Merge group middleware and route middleware
     const groupMiddleware = this.groupStack.flatMap((g) => g.middleware);
     const routeMiddleware = options.middleware || [];
-    const allMiddleware = [...cacheMiddleware, ...groupMiddleware, ...validationMiddleware, ...routeMiddleware];
+    const allMiddleware = [
+      ...policyMiddleware,
+      ...cacheMiddleware,
+      ...groupMiddleware,
+      ...validationMiddleware,
+      ...routeMiddleware
+    ];
 
     // Merge group guards and route guards
     const groupGuards = this.groupStack.flatMap((g) => g.guards);

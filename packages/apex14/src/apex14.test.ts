@@ -17,7 +17,13 @@ import {
   verify,
   mock,
   patch,
-  wasm
+  wasm,
+  delta,
+  policy,
+  stream,
+  replay,
+  snapshot,
+  sdk
 } from "./index.js";
 
 describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () => {
@@ -164,5 +170,13 @@ describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () =
 
     const dummy = mock.one(Type.Object({ name: Type.String() }), { seed: 123 });
     expect(typeof dummy.name).toBe("string");
+
+    // Frontier-Next primitives verification
+    expect(typeof delta.diff).toBe("function");
+    expect(typeof policy.define).toBe("function");
+    expect(typeof stream.from).toBe("function");
+    expect(typeof replay.record).toBe("function");
+    expect(typeof snapshot.verify).toBe("function");
+    expect(typeof sdk.generate).toBe("function");
   });
 });
