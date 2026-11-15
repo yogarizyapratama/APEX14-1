@@ -16,6 +16,7 @@ export default defineConfig({
       "@apex14/database": path.resolve(__dirname, "packages/database/src/index.ts"),
       "@apex14/runtime-node": path.resolve(__dirname, "packages/runtime-node/src/index.ts"),
       "@apex14/runtime-bun": path.resolve(__dirname, "packages/runtime-bun/src/index.ts"),
+      "@apex14/client": path.resolve(__dirname, "packages/client/src/index.ts"),
       "apex14": path.resolve(__dirname, "packages/apex14/src/index.ts")
     }
   },

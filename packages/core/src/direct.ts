@@ -5,8 +5,14 @@ import type {
   Middleware,
   RouteOptions,
   Guard,
-  SecurityConfig
+  SecurityConfig,
+  WebSocketHandlers,
+  TaskOptions,
+  TaskDispatcher,
+  ScheduleOptions,
+  ScheduledJob
 } from "./types.js";
+import type { ApexRequestContext } from "@apex14/http";
 
 export function route(
   path: string,
@@ -14,6 +20,45 @@ export function route(
   options?: RouteOptions
 ): void {
   getActiveScope().route(path, handlerOrMethods, options);
+}
+
+export function sse(
+  path: string,
+  generatorFn: (ctx: ApexRequestContext) => AsyncIterable<any>,
+  options?: RouteOptions
+): void {
+  getActiveScope().sse(path, generatorFn, options);
+}
+
+export function ws(path: string, handlers: WebSocketHandlers): void {
+  getActiveScope().ws(path, handlers);
+}
+
+export function task<TData = any, TResult = any>(
+  name: string,
+  handler: (data: TData) => Promise<TResult>,
+  options?: TaskOptions
+): TaskDispatcher<TData, TResult> {
+  return getActiveScope().task(name, handler, options);
+}
+
+export function schedule(
+  patternOrOptions: string | ScheduleOptions,
+  handler: () => void | Promise<void>
+): ScheduledJob {
+  return getActiveScope().schedule(patternOrOptions, handler);
+}
+
+export function exportMcpTools(): MethodMap {
+  return getActiveScope().exportMcpTools();
+}
+
+export function getOpenApiSpec(info?: any): Record<string, any> {
+  return getActiveScope().getOpenApiSpec(info);
+}
+
+export function enableDocs(options?: { docsPath?: string; specPath?: string; title?: string }): void {
+  getActiveScope().enableDocs(options);
 }
 
 export function group(

@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { RadixRouter, type HttpMethod } from "@apex14/router";
 import {
   ApexRequestContext,
+  ApexSseResult,
   NotFoundError,
   AuthorizationError,
   parseRequestBody,
@@ -15,8 +16,20 @@ import type {
   Middleware,
   RouteOptions,
   Guard,
-  SecurityConfig
+  SecurityConfig,
+  WebSocketHandlers,
+  TaskOptions,
+  TaskDispatcher,
+  ScheduleOptions,
+  ScheduledJob
 } from "./types.js";
+import {
+  generateOpenApiSpec,
+  renderDocsHtml,
+  createMcpHandler,
+  type RouteManifestEntry
+} from "./openapi.js";
+import { TaskQueue, TaskScheduler } from "./tasks.js";
 
 interface GroupContext {
   prefix: string;
@@ -30,6 +43,10 @@ export class ApexScope {
   public guards = new Map<string, Guard>();
   public securityConfig: SecurityConfig = {};
   public services = new Map<string, any>();
+  public routesManifest: RouteManifestEntry[] = [];
+  public wsRoutes = new Map<string, WebSocketHandlers>();
+  public taskQueues = new Map<string, TaskQueue>();
+  public scheduler = new TaskScheduler();
   private groupStack: GroupContext[] = [];
 
   public route(
@@ -74,8 +91,15 @@ export class ApexScope {
 
     if (typeof handlerOrMethods === "function") {
       const defaultMethod = options.method || (options.body ? "POST" : "GET");
+      const methodUpper = defaultMethod.toUpperCase() as HttpMethod;
+      this.routesManifest.push({
+        path: fullPath,
+        method: methodUpper,
+        handler: handlerOrMethods,
+        options: metadata
+      });
       this.router.add({
-        method: defaultMethod.toUpperCase() as HttpMethod,
+        method: methodUpper,
         path: fullPath,
         handler: handlerOrMethods,
         middleware: allMiddleware,
@@ -84,8 +108,15 @@ export class ApexScope {
     } else {
       for (const [method, handler] of Object.entries(handlerOrMethods)) {
         if (typeof handler === "function") {
+          const methodUpper = method.toUpperCase() as HttpMethod;
+          this.routesManifest.push({
+            path: fullPath,
+            method: methodUpper,
+            handler,
+            options: metadata
+          });
           this.router.add({
-            method: method.toUpperCase() as HttpMethod,
+            method: methodUpper,
             path: fullPath,
             handler,
             middleware: allMiddleware,
@@ -94,6 +125,74 @@ export class ApexScope {
         }
       }
     }
+  }
+
+  public sse(
+    path: string,
+    generatorFn: (ctx: ApexRequestContext) => AsyncIterable<any>,
+    options: RouteOptions = {}
+  ): void {
+    this.route(path, {
+      GET: async (ctx) => {
+        const stream = generatorFn(ctx);
+        return new ApexSseResult(stream);
+      }
+    }, options);
+  }
+
+  public ws(path: string, handlers: WebSocketHandlers): void {
+    const currentPrefix = this.groupStack.map((g) => g.prefix).join("");
+    const fullPath = this.combinePaths(currentPrefix, path);
+    this.wsRoutes.set(fullPath, handlers);
+  }
+
+  public task<TData = any, TResult = any>(
+    name: string,
+    handler: (data: TData) => Promise<TResult>,
+    options?: TaskOptions
+  ): TaskDispatcher<TData, TResult> {
+    let queue = this.taskQueues.get(name);
+    if (!queue) {
+      queue = new TaskQueue<TData, TResult>(name, handler, options);
+      this.taskQueues.set(name, queue);
+    }
+    return queue;
+  }
+
+  public schedule(
+    patternOrOptions: string | ScheduleOptions,
+    handler: () => void | Promise<void>
+  ): ScheduledJob {
+    return this.scheduler.schedule(patternOrOptions, handler);
+  }
+
+  public getOpenApiSpec(info?: { title?: string; version?: string; description?: string }): Record<string, any> {
+    return generateOpenApiSpec(this.routesManifest, info);
+  }
+
+  public exportMcpTools(): MethodMap {
+    const handler = createMcpHandler(this);
+    return {
+      GET: handler,
+      POST: handler
+    };
+  }
+
+  public enableDocs(options: { docsPath?: string; specPath?: string; title?: string } = {}): void {
+    const docsPath = options.docsPath || "/_docs";
+    const specPath = options.specPath || "/_openapi.json";
+    const title = options.title || "APEX14 API Reference";
+
+    this.route(specPath, {
+      GET: () => this.getOpenApiSpec({ title })
+    });
+
+    this.route(docsPath, {
+      GET: (ctx) => {
+        ctx.responseHeaders.set("content-type", "text/html; charset=utf-8");
+        return renderDocsHtml(specPath, title);
+      }
+    });
   }
 
   public group(prefix: string, callback: () => void, options: RouteOptions = {}): void {

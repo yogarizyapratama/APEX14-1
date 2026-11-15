@@ -1,11 +1,15 @@
 import http from "node:http";
 import { Readable } from "node:stream";
-import type { ApexScope } from "@apex14/core";
+import { randomUUID } from "node:crypto";
+import { WebSocketServer, WebSocket } from "ws";
+import type { ApexScope, ApexWebSocket, WebSocketHandlers } from "@apex14/core";
 
 export interface NodeServerOptions {
   port?: number;
   host?: string;
   silent?: boolean;
+  docs?: boolean;
+  docsPath?: string;
 }
 
 export interface NodeServerHandle {
@@ -104,6 +108,11 @@ export function listenNode(
   const port = options.port || 3000;
   const host = options.host || "0.0.0.0";
 
+  // Automatically enable interactive docs if requested
+  if (options.docs) {
+    scope.enableDocs({ docsPath: options.docsPath || "/_docs" });
+  }
+
   return new Promise((resolve, reject) => {
     const server = http.createServer(async (req, nodeRes) => {
       try {
@@ -117,6 +126,94 @@ export function listenNode(
           nodeRes.end(JSON.stringify({ error: { message: err.message, status: 500 } }));
         }
       }
+    });
+
+    // WebSocket server integration
+    const wss = new WebSocketServer({ noServer: true });
+    const rooms = new Map<string, Set<ApexWebSocket>>();
+
+    server.on("upgrade", (req, socket, head) => {
+      const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+      const pathname = parsedUrl.pathname;
+
+      let matchedHandlers: WebSocketHandlers | undefined;
+      const params: Record<string, string> = {};
+
+      for (const [routePattern, handlers] of scope.wsRoutes.entries()) {
+        const regexStr = "^" + routePattern.replace(/:([a-zA-Z0-9_]+)/g, "(?<$1>[^/]+)") + "$";
+        const regex = new RegExp(regexStr);
+        const match = pathname.match(regex);
+        if (match) {
+          matchedHandlers = handlers;
+          if (match.groups) Object.assign(params, match.groups);
+          break;
+        }
+      }
+
+      if (!matchedHandlers) {
+        socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+
+      wss.handleUpgrade(req, socket, head, (client) => {
+        const apexWs: ApexWebSocket = {
+          id: randomUUID(),
+          params,
+          data: {},
+          send(data) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(typeof data === "string" || data instanceof Uint8Array ? data : JSON.stringify(data));
+            }
+          },
+          close(code, reason) {
+            client.close(code, reason);
+          },
+          join(room) {
+            if (!rooms.has(room)) rooms.set(room, new Set());
+            rooms.get(room)!.add(apexWs);
+          },
+          leave(room) {
+            rooms.get(room)?.delete(apexWs);
+          },
+          publish(room, message) {
+            const members = rooms.get(room);
+            if (members) {
+              const payload = typeof message === "string" || message instanceof Uint8Array ? message : JSON.stringify(message);
+              for (const member of members) {
+                if (member !== apexWs) {
+                  member.send(payload);
+                }
+              }
+            }
+          }
+        };
+
+        if (matchedHandlers?.open) {
+          matchedHandlers.open(apexWs);
+        }
+
+        client.on("message", (data) => {
+          let parsed: any = data;
+          try {
+            parsed = JSON.parse(data.toString());
+          } catch {
+            parsed = data.toString();
+          }
+          matchedHandlers?.message?.(apexWs, parsed);
+        });
+
+        client.on("close", (code, reason) => {
+          for (const members of rooms.values()) {
+            members.delete(apexWs);
+          }
+          matchedHandlers?.close?.(apexWs, code, reason.toString());
+        });
+
+        client.on("error", (err) => {
+          matchedHandlers?.error?.(apexWs, err);
+        });
+      });
     });
 
     server.on("error", (err) => {
@@ -133,10 +230,14 @@ export function listenNode(
         console.log(`▲ APEX14 — The Intelligent API Framework`);
         console.log(`• Server listening on ${url}`);
         console.log(`• Runtime: Node.js (${process.version})`);
+        if (options.docs) {
+          console.log(`• Interactive Docs: ${url}${options.docsPath || "/_docs"}`);
+        }
       }
 
       // Register graceful shutdown
       const shutdown = async () => {
+        wss.close();
         await new Promise<void>((res) => server.close(() => res()));
       };
 

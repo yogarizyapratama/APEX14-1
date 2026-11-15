@@ -24,7 +24,50 @@ export interface RouteOptions {
   query?: any;
   params?: any;
   response?: any;
+  aiTool?: boolean;
   [key: string]: any;
+}
+
+export interface ApexWebSocket {
+  id: string;
+  params: Record<string, string>;
+  data: Record<string, any>;
+  send(message: string | Uint8Array): void;
+  close(code?: number, reason?: string): void;
+  join(room: string): void;
+  leave(room: string): void;
+  publish(room: string, message: string | Uint8Array): void;
+}
+
+export interface WebSocketHandlers {
+  open?: (ws: ApexWebSocket) => void | Promise<void>;
+  message?: (ws: ApexWebSocket, message: any) => void | Promise<void>;
+  close?: (ws: ApexWebSocket, code: number, reason: string) => void | Promise<void>;
+  error?: (ws: ApexWebSocket, error: Error) => void | Promise<void>;
+}
+
+export interface TaskOptions {
+  concurrency?: number;
+  retries?: number;
+  retryDelayMs?: number;
+}
+
+export interface TaskDispatcher<TData = any, TResult = any> {
+  name: string;
+  dispatch(data: TData): void;
+  runNow(data: TData): Promise<TResult>;
+}
+
+export interface ScheduleOptions {
+  name?: string;
+  cron?: string;
+  interval?: string | number;
+}
+
+export interface ScheduledJob {
+  name: string;
+  pattern: string;
+  stop: () => void;
 }
 
 export type Guard = (ctx: ApexRequestContext) => boolean | Promise<boolean> | void | Promise<void>;

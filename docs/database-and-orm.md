@@ -215,3 +215,27 @@ await db.transaction(async (tx) => {
   await tx.execute("UPDATE accounts SET balance = balance + 100 WHERE id = ?", [2]);
 });
 ```
+
+---
+
+## 7. Multi-Database Drivers (Postgres, MySQL, Turso)
+
+APEX14 comes with embedded zero-dependency SQLite by default, but you can seamlessly switch to production cloud databases by passing a connection string to `configureDatabase`:
+
+```ts
+import { configureDatabase } from "apex14";
+
+// 1. Embedded SQLite in-memory (Default)
+configureDatabase("sqlite::memory:");
+
+// 2. Persistent local SQLite file
+configureDatabase("sqlite://./production.db");
+
+// 3. PostgreSQL Database
+configureDatabase(process.env.DATABASE_URL || "postgres://user:password@localhost:5432/mydb");
+
+// 4. MySQL Database
+configureDatabase("mysql://root:password@localhost:3306/mydb");
+```
+
+Your `model("users", schema)` and `db("table")` code remains **100% identical** across SQLite, Postgres, and MySQL with zero code rewrites!

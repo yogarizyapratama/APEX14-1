@@ -22,6 +22,20 @@ export class ApexFileResult {
   ) {}
 }
 
+export interface SseMessage {
+  event?: string;
+  data: any;
+  id?: string;
+  retry?: number;
+}
+
+export class ApexSseResult {
+  constructor(
+    public stream: AsyncIterable<SseMessage | string | any>,
+    public options: { headers?: Headers | Record<string, string> | string[][]; status?: number } = {}
+  ) {}
+}
+
 export class ApexRequestContext<TBody = any, TParams = Record<string, string>, TQuery = Record<string, any>> {
   public request: Request;
   public params: TParams;

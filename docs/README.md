@@ -29,3 +29,18 @@ Welcome to the complete official documentation for **APEX14 — The Intelligent 
 
 8. [**Multi-Runtime & Deployment**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/multi-runtime-and-deployment.md)
    - Node.js & Bun runtime adapters, Dockerfile, serverless export, graceful shutdown.
+
+9. [**Real-Time Primitives: SSE & WebSockets**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/realtime-sse-websocket.md)
+   - `sse()` async generator event streaming and `ws()` Direct Function WebSockets with room broadcasting.
+
+10. [**Background Tasks & In-Memory Scheduler**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/tasks-and-scheduler.md)
+    - Zero-dependency task queues with `task()` and recurring jobs with `schedule()`.
+
+11. [**OpenAPI 3.1 & Interactive Docs Playground**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/openapi-and-docs.md)
+    - Zero-config Scalar API documentation and interactive testing console on `/_docs`.
+
+12. [**Native AI & MCP (Model Context Protocol) Bridge**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/ai-and-mcp.md)
+    - Auto-export REST routes into native AI Agent tools on `/mcp`.
+
+13. [**End-to-End Type-Safe Client (`@apex14/client`)**](file:///Users/mac/Documents/YOGA/YOGA%20GOKS/APEX14/docs/type-safe-client.md)
+    - Frontend proxy RPC client with full TypeScript autocomplete.

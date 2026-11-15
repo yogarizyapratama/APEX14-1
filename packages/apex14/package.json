@@ -30,6 +30,10 @@
     "./validation": {
       "types": "./dist/validation.d.ts",
       "import": "./dist/validation.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
     }
   },
   "dependencies": {
@@ -40,6 +44,7 @@
     "@apex14/security": "workspace:*",
     "@apex14/storage": "workspace:*",
     "@apex14/database": "workspace:*",
+    "@apex14/client": "workspace:*",
     "@apex14/runtime-node": "workspace:*",
     "@apex14/runtime-bun": "workspace:*"
   },

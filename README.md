@@ -235,6 +235,82 @@ route("/admin/dashboard", () => ({ secretMetrics: true }), {
 });
 ```
 
+### 7. Real-Time Primitives: SSE & WebSockets
+
+```ts
+import { sse, ws } from "apex14";
+
+// Server-Sent Events with async generators
+sse("/ai/stream", async function* () {
+  yield { event: "token", data: "Hello" };
+  yield { event: "token", data: "World" };
+});
+
+// WebSockets with room broadcasting
+ws("/chat/:roomId", {
+  open: (peer) => peer.join(peer.params.roomId),
+  message: (peer, data) => peer.publish(peer.params.roomId, data),
+  close: (peer) => peer.leave(peer.params.roomId)
+});
+```
+
+### 8. Background Tasks & Job Scheduler
+
+```ts
+import { task, schedule } from "apex14";
+
+// Non-blocking background worker queue
+export const sendEmail = task("sendEmail", async ({ to, subject }) => {
+  await mailer.send({ to, subject });
+});
+
+// Zero-dependency recurring jobs
+schedule("1h", async () => {
+  await User.delete({ status: "expired" });
+});
+```
+
+### 9. Native AI & MCP (Model Context Protocol) Bridge
+
+Turn your REST API routes into native AI Agent tools (Claude, Cursor, OpenAI, Gemini) in 1 line:
+
+```ts
+import { route, exportMcpTools, Type } from "apex14";
+
+route("/weather", {
+  POST: ({ body }) => ({ city: body.city, temp: 28 })
+}, {
+  summary: "Get current weather for a city",
+  body: Type.Object({ city: Type.String() }),
+  aiTool: true
+});
+
+// Mount standard JSON-RPC 2.0 MCP server endpoint
+route("/mcp", exportMcpTools());
+```
+
+### 10. Live OpenAPI 3.1 & Interactive Docs Playground
+
+```ts
+import { run } from "apex14";
+
+// Automatically serves modern Scalar interactive documentation on /_docs
+run({ port: 3000, docs: true });
+```
+
+### 11. End-to-End Type-Safe Frontend Client
+
+```ts
+import { createApexClient } from "@apex14/client";
+
+const api = createApexClient("https://api.myapp.com");
+
+// Full autocomplete & typed response
+const users = await api.users.get({ query: { limit: 10 } });
+const user = await api.users(42).get();
+await api.users.post({ body: { name: "Alice" } });
+```
+
 ---
 
 ## Performance Benchmarks
@@ -268,6 +344,7 @@ apex14/
 │   ├── security/           # JWT, Scrypt, Rate Limit, CORS, SSRF
 │   ├── storage/            # File management, signatures & storage
 │   ├── database/           # SQLite driver & CRUD resource generator
+│   ├── client/             # End-to-end type-safe RPC client
 │   ├── runtime-node/       # Node.js http/https adapter
 │   ├── runtime-bun/        # Bun native serve adapter
 │   ├── cli/                # apex14 developer CLI

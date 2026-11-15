@@ -7,12 +7,22 @@ export {
   secure,
   inject,
   getService,
+  sse,
+  ws,
+  task,
+  schedule,
+  exportMcpTools,
+  getOpenApiSpec,
+  enableDocs,
   handle,
   testRequest,
   createScope,
   withScope,
   ApexScope
 } from "@apex14/core";
+
+// End-to-End Type-Safe Client
+export { createApexClient, ApexClientError } from "@apex14/client";
 
 // Universal launcher
 export { run, type RunOptions } from "./launcher.js";
@@ -45,7 +55,9 @@ export {
   typeBoxToSqlType,
   configureDatabase,
   resource,
-  SqliteDatabaseClient
+  SqliteDatabaseClient,
+  PostgresDatabaseClient,
+  MysqlDatabaseClient
 } from "@apex14/database";
 
 // HTTP Primitives & Errors
@@ -59,5 +71,7 @@ export {
   ConflictError,
   RateLimitError,
   ApexRedirect,
-  ApexFileResult
+  ApexFileResult,
+  ApexSseResult,
+  type SseMessage
 } from "@apex14/http";

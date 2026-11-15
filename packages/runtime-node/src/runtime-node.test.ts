@@ -41,4 +41,51 @@ describe("@apex14/runtime-node", () => {
     // Close server
     await serverHandle.close();
   });
+
+  it("handles WebSocket connections, rooms, and messaging", async () => {
+    const scope = createScope();
+
+    scope.ws("/ws/chat", {
+      open: (ws) => {
+        ws.send(JSON.stringify({ type: "connected", id: ws.id }));
+      },
+      message: (ws, data) => {
+        if (data.action === "echo") {
+          ws.send(JSON.stringify({ type: "echo", payload: data.payload }));
+        }
+      }
+    });
+
+    const handle = await listenNode(scope, { port: 0, silent: true });
+    const wsUrl = `ws://localhost:${handle.port}/ws/chat`;
+
+    // Connect using WebSocket client
+    const { WebSocket: WsClient } = await import("ws");
+    const ws = new WsClient(wsUrl);
+
+    const receivedMessages: any[] = [];
+
+    await new Promise<void>((resolve, reject) => {
+      ws.on("open", () => {
+        ws.send(JSON.stringify({ action: "echo", payload: "Hello WS" }));
+      });
+
+      ws.on("message", (raw) => {
+        const msg = JSON.parse(raw.toString());
+        receivedMessages.push(msg);
+        if (msg.type === "echo") {
+          ws.close();
+          resolve();
+        }
+      });
+
+      ws.on("error", reject);
+    });
+
+    expect(receivedMessages.length).toBe(2);
+    expect(receivedMessages[0].type).toBe("connected");
+    expect(receivedMessages[1].payload).toBe("Hello WS");
+
+    await handle.close();
+  });
 });

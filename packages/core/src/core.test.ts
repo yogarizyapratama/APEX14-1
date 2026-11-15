@@ -6,6 +6,12 @@ import {
   guard,
   inject,
   getService,
+  sse,
+  task,
+  schedule,
+  exportMcpTools,
+  getOpenApiSpec,
+  enableDocs,
   createScope,
   withScope,
   testRequest,
@@ -203,6 +209,144 @@ describe("@apex14/core — Direct Function API", () => {
     withScope(scope, () => {
       inject("mailer", { send: () => true });
       expect(getService("mailer")?.send()).toBe(true);
+    });
+  });
+
+  describe("Real-Time Primitives (sse)", () => {
+    it("streams Server-Sent Events via async generator", async () => {
+      const scope = createScope();
+      await withScope(scope, async () => {
+        sse("/events", async function* () {
+          yield { event: "welcome", data: { message: "Hello SSE" } };
+          yield { data: "Simple text message" };
+        });
+
+        const res = await scope.handle(new Request("http://localhost/events"));
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-type")).toContain("text/event-stream");
+
+        const text = await res.text();
+        expect(text).toContain("event: welcome\n");
+        expect(text).toContain('data: {"message":"Hello SSE"}\n\n');
+        expect(text).toContain("data: Simple text message\n\n");
+      });
+    });
+  });
+
+  describe("Background Tasks & Scheduler (task & schedule)", () => {
+    it("dispatches background tasks asynchronously without blocking", async () => {
+      const processed: string[] = [];
+      const emailTask = task("sendEmail", async (data: { email: string }) => {
+        processed.push(data.email);
+        return { sent: true };
+      });
+
+      // Dispatch task
+      emailTask.dispatch({ email: "user@apex14.dev" });
+
+      // Run now directly
+      const result = await emailTask.runNow({ email: "immediate@apex14.dev" });
+      expect(result.sent).toBe(true);
+      expect(processed).toContain("immediate@apex14.dev");
+    });
+
+    it("registers and cancels scheduled jobs cleanly", () => {
+      let tickCount = 0;
+      const job = schedule("100ms", () => {
+        tickCount++;
+      });
+
+      expect(job.name).toBeDefined();
+      expect(job.pattern).toBe("100ms");
+      job.stop();
+    });
+  });
+
+  describe("OpenAPI 3.1 & Interactive Docs Engine", () => {
+    it("generates complete OpenAPI 3.1 schema and mounts docs UI", async () => {
+      const scope = createScope();
+      await withScope(scope, async () => {
+        route("/users/:id", {
+          GET: ({ params }) => ({ id: params.id, name: "Alice" })
+        }, {
+          summary: "Get user by ID",
+          params: Type.Object({ id: Type.String() }),
+          response: Type.Object({ id: Type.String(), name: Type.String() })
+        });
+
+        scope.enableDocs({ docsPath: "/_docs", specPath: "/_openapi.json" });
+
+        // 1. Check OpenAPI Spec JSON
+        const specRes = await scope.handle(new Request("http://localhost/_openapi.json"));
+        expect(specRes.status).toBe(200);
+        const spec = await specRes.json();
+        expect(spec.openapi).toBe("3.1.0");
+        expect(spec.paths["/users/{id}"]).toBeDefined();
+        expect(spec.paths["/users/{id}"].get.summary).toBe("Get user by ID");
+
+        // 2. Check Interactive HTML UI
+        const docsRes = await scope.handle(new Request("http://localhost/_docs"));
+        expect(docsRes.status).toBe(200);
+        expect(docsRes.headers.get("content-type")).toContain("text/html");
+        const html = await docsRes.text();
+        expect(html).toContain("@scalar/api-reference");
+      });
+    });
+  });
+
+  describe("Native AI & MCP (Model Context Protocol) Bridge", () => {
+    it("exposes tools/list and tools/call for AI agents", async () => {
+      const scope = createScope();
+      await withScope(scope, async () => {
+        route("/weather", {
+          POST: ({ body }) => ({ city: body.city, temp: 28, condition: "Sunny" })
+        }, {
+          summary: "Get current weather for a city",
+          aiTool: true,
+          body: Type.Object({ city: Type.String() })
+        });
+
+        route("/mcp", scope.exportMcpTools());
+
+        // 1. tools/list
+        const listReq = new Request("http://localhost/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/list"
+          })
+        });
+
+        const listRes = await scope.handle(listReq);
+        const listData = await listRes.json();
+        expect(listData.jsonrpc).toBe("2.0");
+        expect(listData.result.tools.length).toBeGreaterThan(0);
+        expect(listData.result.tools[0].name).toBe("post_weather");
+        expect(listData.result.tools[0].description).toBe("Get current weather for a city");
+
+        // 2. tools/call
+        const callReq = new Request("http://localhost/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: {
+              name: "post_weather",
+              arguments: { city: "Tokyo" }
+            }
+          })
+        });
+
+        const callRes = await scope.handle(callReq);
+        const callData = await callRes.json();
+        expect(callData.jsonrpc).toBe("2.0");
+        expect(callData.result.content[0].type).toBe("text");
+        expect(callData.result.content[0].text).toContain("Tokyo");
+      });
     });
   });
 });
