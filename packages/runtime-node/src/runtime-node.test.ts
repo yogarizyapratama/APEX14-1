@@ -42,6 +42,37 @@ describe("@apex14/runtime-node", () => {
     await serverHandle.close();
   });
 
+  it("handles streaming SSE and error boundaries properly", async () => {
+    const scope = createScope();
+    scope.sse("/events", async function* () {
+      yield { event: "hello", data: { text: "world" } };
+    });
+    scope.route("/error", () => {
+      throw new Error("Deliberate failure");
+    });
+
+    const handle = await listenNode(scope, { port: 0, silent: true });
+
+    // Test SSE streaming
+    const sseRes = await fetch(`${handle.url}/events`);
+    expect(sseRes.status).toBe(200);
+    expect(sseRes.headers.get("content-type")).toContain("text/event-stream");
+    const reader = sseRes.body?.getReader();
+    const chunk = await reader?.read();
+    const text = new TextDecoder().decode(chunk?.value);
+    expect(text).toContain("event: hello");
+    expect(text).toContain('"text":"world"');
+    reader?.releaseLock();
+
+    // Test Error boundary
+    const errRes = await fetch(`${handle.url}/error`);
+    expect(errRes.status).toBe(500);
+    const errJson = await errRes.json();
+    expect(errJson.error.message).toBe("Deliberate failure");
+
+    await handle.close();
+  });
+
   it("handles WebSocket connections, rooms, and messaging", async () => {
     const scope = createScope();
 

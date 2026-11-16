@@ -1,6 +1,6 @@
 {
   "name": "@apex14/core",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Kernel and Direct Function API engine for APEX14",
   "type": "module",
   "files": [
@@ -16,10 +16,10 @@
     }
   },
   "dependencies": {
-    "@apex14/router": "^0.2.1",
-    "@apex14/http": "^0.2.1",
-    "@apex14/validation": "^0.2.1",
-    "@apex14/security": "^0.2.1"
+    "@apex14/router": "workspace:^",
+    "@apex14/http": "workspace:^",
+    "@apex14/validation": "workspace:^",
+    "@apex14/security": "workspace:^"
   },
   "scripts": {
     "build": "tsc",

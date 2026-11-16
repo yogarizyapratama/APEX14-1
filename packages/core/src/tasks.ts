@@ -1,4 +1,5 @@
 import type { TaskOptions, TaskDispatcher, ScheduleOptions, ScheduledJob } from "./types.js";
+import { getDistributedDriver } from "./distributed/index.js";
 
 export class TaskQueue<TData = any, TResult = any> implements TaskDispatcher<TData, TResult> {
   public name: string;
@@ -25,6 +26,15 @@ export class TaskQueue<TData = any, TResult = any> implements TaskDispatcher<TDa
   public dispatch(data: TData): void {
     this.queue.push({ data, retriesLeft: this.options.retries || 0 });
     this.processNext();
+  }
+
+  public async dispatchDistributed(data: TData): Promise<void> {
+    const driver = getDistributedDriver();
+    if (driver.name !== "memory") {
+      await driver.taskPush(this.name, data);
+    } else {
+      this.dispatch(data);
+    }
   }
 
   public async runNow(data: TData): Promise<TResult> {

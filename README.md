@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/apex14"><img src="https://img.shields.io/npm/v/apex14.svg?style=flat-square&color=blue" alt="NPM Version" /></a>
   <a href="https://www.npmjs.com/package/create-apex14"><img src="https://img.shields.io/npm/v/create-apex14.svg?style=flat-square&color=orange" alt="create-apex14" /></a>
-  <a href="https://github.com/yogarizyapratama/APEX14-1/actions"><img src="https://img.shields.io/badge/tests-125%20passed-brightgreen.svg?style=flat-square" alt="Tests" /></a>
+  <a href="https://github.com/yogarizyapratama/APEX14-1/actions"><img src="https://img.shields.io/badge/tests-132%20passed-brightgreen.svg?style=flat-square" alt="Tests" /></a>
   <a href="https://github.com/yogarizyapratama/APEX14-1/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
@@ -946,13 +946,80 @@ Pengujian mikro-benchmark riil pada Apple Silicon (macOS Darwin ARM64, Node v24.
 pnpm bench
 ```
 
-| Pola Rute | Throughput (ops/sec) | Rata-rata Latensi |
-|---|---|---|
-| Root Static (`/`) | **23,218,006** ops/detik | **43 ns/op** |
-| Single Param (`/users/:id`) | **3,864,066** ops/detik | **259 ns/op** |
-| Deep Static (`/api/v1/health/detailed`) | **2,799,932** ops/detik | **357 ns/op** |
-| Multi-Param (`/org/:o/prj/:p/iss/:i`) | **1,606,611** ops/detik | **622 ns/op** |
-| Wildcard Route (`/static/*filepath`) | **1,359,946** ops/detik | **735 ns/op** |
+| Pola Rute | Throughput (ops/sec) | Rata-rata Latensi | Catatan Arsitektur v0.3.0 |
+|---|---|---|---|
+| Root Static (`/`) | **22,218,498** ops/detik | **45 ns/op** | Zero-split char-code traversal |
+| Deep Static (`/api/v1/health/detailed`) | **17,681,590** ops/detik | **57 ns/op** | O(1) Radix static table lookup (+530% speedup) |
+| Single Param (`/users/:id`) | **4,111,953** ops/detik | **243 ns/op** | Pre-allocated capture buffer |
+| Wildcard Route (`/static/*filepath`) | **3,571,039** ops/detik | **280 ns/op** | Zero-allocation prefix scanner |
+| Multi-Param (`/org/:o/prj/:p/iss/:i`) | **1,400,081** ops/detik | **714 ns/op** | Safe scoped param mapping |
+
+---
+
+## Fitur Unggulan Enterprise (v0.3.0)
+
+### 1. Universal Serverless & Next.js App Router Helper
+Hubungkan backend APEX14 ke Next.js (App Router `app/api/[...apex]/route.ts`) atau platform serverless (Vercel, AWS Lambda, Cloudflare Workers):
+
+```ts
+// app/api/[...apex]/route.ts
+import { createFetchHandler } from "apex14";
+import "./server-routes"; // Mendaftarkan route(), db(), guard(), dll.
+
+export const { GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD } = createFetchHandler({
+  basePath: "/api"
+});
+```
+
+### 2. Distributed State Driver & Redis Adapter (`@apex14/adapter-redis`)
+Sinkronisasikan rate limiting, distributed lock, cache, dan live reactive pub/sub di seluruh cluster multi-node:
+
+```ts
+import { useDistributedState } from "apex14";
+import { RedisStateDriver } from "@apex14/adapter-redis";
+
+// Aktifkan Redis untuk state terdistribusi
+useDistributedState(new RedisStateDriver({
+  url: process.env.REDIS_URL || "redis://localhost:6379"
+}));
+```
+
+### 3. ORM Relations & Single-Query Batch Loading (Anti N+1)
+Relasi `hasMany` dan `belongsTo` dimuat secara otomatis menggunakan single batch query (`WHERE fk IN (...)`), menjamin performa konstan tanpa masalah N+1:
+
+```ts
+import { model, hasMany, belongsTo, Type } from "apex14";
+
+const User = model("users", Type.Object({ name: Type.String() }));
+const Post = model("posts", Type.Object({ title: Type.String(), user_id: Type.Integer() }));
+
+User.hasMany("posts", Post, { foreignKey: "user_id" });
+Post.belongsTo("author", User, { foreignKey: "user_id" });
+
+// Muat User beserta seluruh Post dalam 1 query batch
+const usersWithPosts = await User.include("posts").all();
+```
+
+### 4. End-to-End Type Inference untuk Client (`@apex14/client`)
+Client HTTP dengan autocomplete TypeScript penuh untuk path, parameter, body, query, dan tipe respons:
+
+```ts
+import { createApexClient } from "apex14";
+
+interface AppRoutes {
+  users: {
+    get: { response: Array<{ id: number; name: string }>; query?: { page?: number } };
+    post: { body: { name: string; email: string }; response: { id: number; name: string } };
+  };
+}
+
+const client = createApexClient<AppRoutes>("http://localhost:3000");
+
+// Tipe data response dan body otomatis terinferensikan secara presisi
+const user = await client.users.post({
+  body: { name: "Alice", email: "alice@apex14.dev" }
+});
+```
 
 ---
 
@@ -962,17 +1029,20 @@ pnpm bench
 apex14/
 ├── packages/
 │   ├── apex14/            # Umbrella package utama (Direct Function API)
-│   ├── core/               # Kernel, Scope, context AsyncLocalStorage & primitive registry
-│   ├── router/             # Radix-tree Trie Router berkecepatan tinggi
+│   ├── core/               # Kernel, Scope, context AsyncLocalStorage & DistributedStateDriver
+│   ├── router/             # Radix-tree Trie Router berkecepatan tinggi (17.6M+ ops/sec)
 │   ├── http/               # Universal Request Context, exception handling & serializer
 │   ├── validation/         # Validasi TypeBox & schema contract engine
-│   ├── security/           # JWT, Scrypt, Rate Limit, CORS, SSRF guard
+│   ├── security/           # JWT, Scrypt, distributed rate limiter, CORS, SSRF guard
 │   ├── storage/            # File management, signatures & LocalStorageProvider
-│   ├── database/           # SQLite driver & ORM fluent query builder
-│   ├── client/             # End-to-end type-safe client SDK (@apex14/client)
-│   ├── runtime-node/       # Adapter Node.js http/https
+│   ├── database/           # SQLite/PG/MySQL driver, ORM relations & batch loader
+│   ├── client/             # End-to-end type-safe client RPC (@apex14/client)
+│   ├── runtime-node/       # Adapter Node.js Dual-Engine Fast Path & WebSockets
 │   ├── runtime-bun/        # Adapter Bun.serve native
+│   ├── adapter-redis/      # Redis distributed state adapter (rateLimit, lock, cache)
 │   ├── cli/                # CLI engine (@apex14/cli)
+│   └── create-apex14/      # Scaffolding generator (npx create-apex14)
+```
 │   └── create-apex14/      # Scaffolder generator (create-apex14)
 ├── examples/               # Contoh aplikasi siap pakai
 └── benchmarks/             # Suite pengujian performa benchmark

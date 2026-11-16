@@ -131,6 +131,10 @@ export {
   ApexCounter,
   ApexGauge,
   ApexHistogram,
+  useDistributedState,
+  getDistributedStateDriver,
+  MemoryStateDriver,
+  type DistributedStateDriver,
   exportMcpTools,
   getOpenApiSpec,
   enableDocs,
@@ -146,6 +150,14 @@ export { createApexClient, ApexClientError } from "@apex14/client";
 
 // Universal launcher
 export { run, type RunOptions } from "./launcher.js";
+
+// Universal Serverless & Next.js App Router Helper
+export {
+  createFetchHandler,
+  type CreateFetchHandlerOptions,
+  type ServerlessFetchHandlers,
+  type FetchHandlerFn
+} from "./serverless.js";
 
 // Validation & TypeBox
 export { Type, validateSchema, validateOrThrow } from "@apex14/validation";
@@ -185,7 +197,12 @@ export {
   resource,
   SqliteDatabaseClient,
   PostgresDatabaseClient,
-  MysqlDatabaseClient
+  MysqlDatabaseClient,
+  hasMany,
+  belongsTo,
+  type RelationDefinition,
+  type HasManyOptions,
+  type BelongsToOptions
 } from "@apex14/database";
 
 // HTTP Primitives & Errors

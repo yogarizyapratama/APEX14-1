@@ -29,7 +29,8 @@ import {
   mask,
   guardrail,
   migrate,
-  metric
+  metric,
+  createFetchHandler
 } from "./index.js";
 
 describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () => {
@@ -192,5 +193,42 @@ describe("APEX14 — Direct Function API Acceptance Criteria (Section 39)", () =
     expect(typeof guardrail.assertSafePrompt).toBe("function");
     expect(typeof migrate.plan).toBe("function");
     expect(typeof metric.counter).toBe("function");
+  });
+
+  it("supports Universal Serverless & Next.js App Router Helper (createFetchHandler)", async () => {
+    const scope = createScope();
+    scope.route("/todos", {
+      GET: () => [{ id: 1, title: "Next.js Integration" }],
+      POST: ({ body }) => ({ success: true, created: body })
+    });
+    scope.route("/todos/:id", ({ params }) => ({ id: params.id, title: "Detail" }));
+
+    // Initialize Next.js route handler with basePath
+    const { GET, POST } = createFetchHandler({ basePath: "/api", scope });
+
+    // 1. GET with basePath stripping
+    const getReq = new Request("https://myapp.vercel.app/api/todos?status=active");
+    const getRes = await GET(getReq);
+    expect(getRes.status).toBe(200);
+    const getJson = await getRes.json();
+    expect(getJson).toEqual([{ id: 1, title: "Next.js Integration" }]);
+
+    // 2. GET with param
+    const paramReq = new Request("https://myapp.vercel.app/api/todos/42");
+    const paramRes = await GET(paramReq);
+    expect(paramRes.status).toBe(200);
+    const paramJson = await paramRes.json();
+    expect(paramJson).toEqual({ id: "42", title: "Detail" });
+
+    // 3. POST with body
+    const postReq = new Request("https://myapp.vercel.app/api/todos", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Deploy to Vercel" })
+    });
+    const postRes = await POST(postReq);
+    expect(postRes.status).toBe(200);
+    const postJson = await postRes.json();
+    expect(postJson).toEqual({ success: true, created: { title: "Deploy to Vercel" } });
   });
 });

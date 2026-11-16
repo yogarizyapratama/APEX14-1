@@ -1,6 +1,13 @@
 import type { TSchema } from "@apex14/validation";
 import { db } from "./client.js";
 import { ModelQuery, type FindOptions, type OrderDirection } from "./orm.js";
+import {
+  type RelationDefinition,
+  type HasManyOptions,
+  type BelongsToOptions,
+  hasMany,
+  belongsTo
+} from "./relations.js";
 
 export interface ModelOptions {
   timestamps?: boolean;
@@ -8,6 +15,7 @@ export interface ModelOptions {
   client?: string;
   audit?: boolean;
   tenant?: boolean;
+  relations?: Record<string, RelationDefinition>;
 }
 
 export function typeBoxToSqlType(propertySchema: any): string {
@@ -53,13 +61,33 @@ export class Model<T = any> {
   public options: ModelOptions;
   private initialized = false;
   private initPromise?: Promise<void>;
+  private relations = new Map<string, RelationDefinition>();
 
   constructor(tableName: string, schema?: TSchema, options: ModelOptions = {}) {
     this.tableName = tableName.replace(/[^a-zA-Z0-9_]/g, "");
     this.schema = schema;
     this.options = { timestamps: true, softDelete: false, ...options };
+    if (options.relations) {
+      for (const [name, def] of Object.entries(options.relations)) {
+        this.relations.set(name, def);
+      }
+    }
     // Trigger eager table creation
     this.ensureTable();
+  }
+
+  public hasMany(relationName: string, targetModel: any, options: HasManyOptions = {}): this {
+    this.relations.set(relationName, hasMany(targetModel, options));
+    return this;
+  }
+
+  public belongsTo(relationName: string, targetModel: any, options: BelongsToOptions = {}): this {
+    this.relations.set(relationName, belongsTo(targetModel, options));
+    return this;
+  }
+
+  public getRelation(relationName: string): RelationDefinition | undefined {
+    return this.relations.get(relationName);
   }
 
   public async ensureTable(): Promise<void> {
@@ -118,6 +146,7 @@ export class Model<T = any> {
 
   private query(): ModelQuery<T> {
     const q = db<T>(this.tableName);
+    q.setModel(this);
     if (this.options.softDelete) {
       q.where("deleted_at", "IS NULL", null);
     }
@@ -129,6 +158,10 @@ export class Model<T = any> {
       }
     }
     return q;
+  }
+
+  public include(...relations: (string | string[])[]): ModelQuery<T> {
+    return this.query().include(...relations);
   }
 
   public async all(): Promise<T[]> {

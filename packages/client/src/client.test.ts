@@ -66,4 +66,54 @@ describe("@apex14/client", () => {
 
     await expect(client.users(999).get()).rejects.toThrow("User not found");
   });
+
+  it("supports end-to-end typed client inference (InferRouteResponse, InferRouteBody)", async () => {
+    interface UserDto {
+      id: number;
+      name: string;
+      email: string;
+    }
+
+    interface AppRoutes {
+      users: {
+        get: { response: UserDto[]; query?: { page?: number; limit?: number } };
+        post: { body: { name: string; email: string }; response: UserDto };
+      };
+      products: ((id: number) => {
+        get: { response: { id: number; title: string; price: number } };
+      });
+    }
+
+    const mockFetch = async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/users") && init?.method === "POST") {
+        const parsed = JSON.parse(init.body as string);
+        return new Response(JSON.stringify({ id: 10, ...parsed }), {
+          status: 201,
+          headers: { "content-type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify([{ id: 1, name: "Alice", email: "alice@apex14.dev" }]), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    };
+
+    const client = createApexClient<AppRoutes>("https://api.apex14.dev", {
+      fetch: mockFetch as any
+    });
+
+    // Typed POST
+    const newUser = await client.users.post({
+      body: { name: "Bob", email: "bob@apex14.dev" }
+    });
+    expect(newUser.id).toBe(10);
+    expect(newUser.name).toBe("Bob");
+
+    // Typed GET
+    const users = await client.users.get({
+      query: { page: 1, limit: 20 }
+    });
+    expect(users[0]!.email).toBe("alice@apex14.dev");
+  });
 });

@@ -30,37 +30,53 @@ importers:
         specifier: workspace:*
         version: link:../../packages/apex14
 
+  packages/adapter-redis:
+    dependencies:
+      '@apex14/core':
+        specifier: workspace:^
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.5)
+
   packages/apex14:
     dependencies:
+      '@apex14/adapter-redis':
+        specifier: workspace:^
+        version: link:../adapter-redis
       '@apex14/client':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../client
       '@apex14/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@apex14/database':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../database
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
       '@apex14/router':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../router
       '@apex14/runtime-bun':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime-bun
       '@apex14/runtime-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime-node
       '@apex14/security':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../security
       '@apex14/storage':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../storage
       '@apex14/validation':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../validation
     devDependencies:
       '@types/node':
@@ -76,10 +92,10 @@ importers:
   packages/cli:
     dependencies:
       '@apex14/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@apex14/router':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../router
     devDependencies:
       '@types/node':
@@ -104,16 +120,16 @@ importers:
   packages/core:
     dependencies:
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
       '@apex14/router':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../router
       '@apex14/security':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../security
       '@apex14/validation':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../validation
     devDependencies:
       typescript:
@@ -126,7 +142,7 @@ importers:
   packages/create-apex14:
     dependencies:
       '@apex14/cli':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cli
     devDependencies:
       typescript:
@@ -136,13 +152,13 @@ importers:
   packages/database:
     dependencies:
       '@apex14/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
       '@apex14/validation':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../validation
     devDependencies:
       typescript:
@@ -173,10 +189,10 @@ importers:
   packages/runtime-bun:
     dependencies:
       '@apex14/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
     devDependencies:
       typescript:
@@ -186,10 +202,10 @@ importers:
   packages/runtime-node:
     dependencies:
       '@apex14/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
       ws:
         specifier: ^8.23.0
@@ -211,7 +227,7 @@ importers:
   packages/security:
     dependencies:
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
     devDependencies:
       typescript:
@@ -224,7 +240,7 @@ importers:
   packages/storage:
     dependencies:
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
     devDependencies:
       typescript:
@@ -237,7 +253,7 @@ importers:
   packages/validation:
     dependencies:
       '@apex14/http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../http
       '@sinclair/typebox':
         specifier: ^0.34.14

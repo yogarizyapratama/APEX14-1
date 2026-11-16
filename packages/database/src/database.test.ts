@@ -323,5 +323,49 @@ describe("@apex14/database", () => {
       expect(allPosts.length).toBe(2);
       expect(allPosts[0].title).toBe("First Post");
     });
+
+    it("supports ORM relations (hasMany, belongsTo) with single-query batch loading (no N+1)", async () => {
+      const AuthorSchema = Type.Object({ name: Type.String() });
+      const ArticleSchema = Type.Object({
+        author_id: Type.Integer(),
+        title: Type.String()
+      });
+
+      const Author = model("authors", AuthorSchema);
+      const Article = model("articles", ArticleSchema);
+
+      // Define relations
+      Author.hasMany("articles", Article, { foreignKey: "author_id" });
+      Article.belongsTo("author", Author, { foreignKey: "author_id" });
+
+      // Create authors
+      const alice = await Author.create({ name: "Alice Writer" });
+      const bob = await Author.create({ name: "Bob Journalist" });
+
+      // Create articles
+      await Article.create({ author_id: alice.id, title: "Deep Dive into V8 Engine" });
+      await Article.create({ author_id: alice.id, title: "Building High-Throughput Radix Routers" });
+      await Article.create({ author_id: bob.id, title: "The State of Cloud Computing" });
+
+      // Test hasMany via include()
+      const authorsWithArticles = await Author.include("articles").all();
+      expect(authorsWithArticles.length).toBe(2);
+
+      const aliceRecord = authorsWithArticles.find((a: any) => a.id === alice.id);
+      expect(aliceRecord).toBeDefined();
+      expect(aliceRecord.articles).toBeInstanceOf(Array);
+      expect(aliceRecord.articles.length).toBe(2);
+      expect(aliceRecord.articles.map((p: any) => p.title)).toContain("Deep Dive into V8 Engine");
+
+      const bobRecord = authorsWithArticles.find((a: any) => a.id === bob.id);
+      expect(bobRecord.articles.length).toBe(1);
+      expect(bobRecord.articles[0].title).toBe("The State of Cloud Computing");
+
+      // Test belongsTo via include()
+      const articlesWithAuthor = await Article.include("author").all();
+      expect(articlesWithAuthor.length).toBe(3);
+      expect(articlesWithAuthor[0].author).toBeDefined();
+      expect(articlesWithAuthor[0].author.name).toBeTruthy();
+    });
   });
 });

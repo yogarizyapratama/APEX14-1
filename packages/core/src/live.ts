@@ -1,5 +1,6 @@
 import { ApexRequestContext, ApexSseResult } from "@apex14/http";
 import { getActiveScope, type ApexScope } from "./scope.js";
+import { getDistributedStateDriver, MemoryStateDriver } from "./state.js";
 import type { RouteOptions } from "./types.js";
 
 export type LiveListener = (tag: string, payload?: any) => void;
@@ -19,6 +20,10 @@ class LiveBus {
       } catch {
         // Safe ignore listener error
       }
+    }
+    const stateDriver = getDistributedStateDriver();
+    if (!(stateDriver instanceof MemoryStateDriver)) {
+      stateDriver.publish(`apex14:live:${tag}`, { tag, payload }).catch(() => {});
     }
   }
 }

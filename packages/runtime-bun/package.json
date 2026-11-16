@@ -1,6 +1,6 @@
 {
   "name": "@apex14/runtime-bun",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Bun native runtime adapter for APEX14",
   "type": "module",
   "files": [
@@ -16,8 +16,8 @@
     }
   },
   "dependencies": {
-    "@apex14/core": "^0.2.1",
-    "@apex14/http": "^0.2.1"
+    "@apex14/core": "workspace:^",
+    "@apex14/http": "workspace:^"
   },
   "scripts": {
     "build": "tsc"

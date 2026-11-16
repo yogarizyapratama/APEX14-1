@@ -59,33 +59,98 @@ export function toWebRequest(req: http.IncomingMessage, host: string, port: numb
   });
 }
 
-export async function sendWebResponse(res: Response, nodeRes: http.ServerResponse): Promise<void> {
-  nodeRes.statusCode = res.status;
-  nodeRes.statusMessage = res.statusText;
+function readNodeBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.setEncoding("utf8");
+    req.on("data", (chunk) => {
+      body += chunk;
+    });
+    req.on("end", () => resolve(body));
+    req.on("error", (err) => reject(err));
+  });
+}
 
-  // Set-Cookie handling
-  const setCookie = (res.headers as any).getSetCookie
+function toWebRequestWithBody(
+  req: http.IncomingMessage,
+  host: string,
+  port: number,
+  body: string
+): Request {
+  const protocol = (req.socket as any).encrypted ? "https" : "http";
+  const url = `${protocol}://${req.headers.host || `${host}:${port}`}${req.url || "/"}`;
+
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(key, v);
+    } else {
+      headers.set(key, value);
+    }
+  }
+
+  const method = req.method?.toUpperCase() || "GET";
+
+  return new Request(url, {
+    method,
+    headers,
+    body: body.length > 0 ? body : undefined
+  });
+}
+
+export async function sendWebResponse(res: Response, nodeRes: http.ServerResponse): Promise<void> {
+  const contentType = res.headers.get("content-type") || "";
+  const isStreaming =
+    contentType.includes("text/event-stream") ||
+    res.headers.has("content-disposition") ||
+    contentType.includes("application/octet-stream");
+
+  // Format headers for writeHead
+  const headersObj: Record<string, string | string[]> = {};
+  const setCookies: string[] = [];
+
+  const rawSetCookie = (res.headers as any).getSetCookie
     ? (res.headers as any).getSetCookie()
     : res.headers.get("set-cookie")
       ? [res.headers.get("set-cookie")!]
       : [];
 
   res.headers.forEach((value, key) => {
-    if (key.toLowerCase() !== "set-cookie") {
-      nodeRes.setHeader(key, value);
+    const lower = key.toLowerCase();
+    if (lower === "set-cookie") {
+      setCookies.push(value);
+    } else {
+      headersObj[key] = value;
     }
   });
 
-  if (setCookie.length > 0) {
-    nodeRes.setHeader("set-cookie", setCookie);
+  if (rawSetCookie.length > 0) {
+    headersObj["set-cookie"] = rawSetCookie;
+  } else if (setCookies.length > 0) {
+    headersObj["set-cookie"] = setCookies;
   }
 
   if (!res.body) {
+    nodeRes.writeHead(res.status, res.statusText, headersObj);
     nodeRes.end();
     return;
   }
 
-  // Stream web response body to node response
+  // Node.js Direct Fast-Path: Write JSON/text payloads directly to nodeRes
+  if (!isStreaming) {
+    try {
+      const text = await res.text();
+      nodeRes.writeHead(res.status, res.statusText, headersObj);
+      nodeRes.end(text);
+      return;
+    } catch {
+      // Fallback to streaming pipeline if text extraction fails
+    }
+  }
+
+  // Streaming Pipeline: Preserve for SSE (ApexSseResult), file downloads (ApexFileResult) or streams
+  nodeRes.writeHead(res.status, res.statusText, headersObj);
   const reader = res.body.getReader();
   try {
     while (true) {
@@ -123,7 +188,23 @@ export function listenNode(
   return new Promise((resolve, reject) => {
     const server = http.createServer(async (req, nodeRes) => {
       try {
-        const webReq = toWebRequest(req, host, port);
+        const method = req.method?.toUpperCase() || "GET";
+        let webReq: Request;
+        const contentType = req.headers["content-type"] || "";
+
+        if (method === "GET" || method === "HEAD") {
+          webReq = toWebRequest(req, host, port);
+        } else if (
+          contentType.includes("application/json") ||
+          contentType.includes("text/plain") ||
+          contentType.includes("application/x-www-form-urlencoded")
+        ) {
+          const bodyStr = await readNodeBody(req);
+          webReq = toWebRequestWithBody(req, host, port, bodyStr);
+        } else {
+          webReq = toWebRequest(req, host, port);
+        }
+
         const webRes = await scope.handle(webReq);
         await sendWebResponse(webRes, nodeRes);
       } catch (err: any) {

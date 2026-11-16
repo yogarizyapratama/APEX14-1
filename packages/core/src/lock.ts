@@ -1,4 +1,6 @@
 import { ApexError } from "@apex14/http";
+import { getDistributedStateDriver, MemoryStateDriver } from "./state.js";
+import { getDistributedDriver } from "./distributed/index.js";
 
 export interface LockOptions {
   ttlMs?: number;
@@ -29,6 +31,32 @@ export class ApexLockEngine {
     const retryDelayMs = options.retryDelayMs || 25;
     const startTime = Date.now();
     const lockId = `lock_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    const stateDriver = getDistributedStateDriver();
+    if (!(stateDriver instanceof MemoryStateDriver)) {
+      while (true) {
+        const token = await stateDriver.acquireLock(key, ttlMs);
+        if (token) return token;
+
+        if (Date.now() - startTime >= timeoutMs) {
+          throw new LockAcquisitionError(key);
+        }
+        await new Promise((r) => setTimeout(r, retryDelayMs));
+      }
+    }
+
+    const driver = getDistributedDriver();
+    if (driver.name !== "memory") {
+      while (true) {
+        const acquired = await driver.lockAcquire(key, ttlMs, lockId);
+        if (acquired) return lockId;
+
+        if (Date.now() - startTime >= timeoutMs) {
+          throw new LockAcquisitionError(key);
+        }
+        await new Promise((r) => setTimeout(r, retryDelayMs));
+      }
+    }
 
     while (true) {
       const now = Date.now();
@@ -73,7 +101,17 @@ export class ApexLockEngine {
     }
   }
 
-  public release(key: string, lockId: string): boolean {
+  public async release(key: string, lockId: string): Promise<boolean> {
+    const stateDriver = getDistributedStateDriver();
+    if (!(stateDriver instanceof MemoryStateDriver)) {
+      return await stateDriver.releaseLock(key, lockId);
+    }
+
+    const driver = getDistributedDriver();
+    if (driver.name !== "memory") {
+      return await driver.lockRelease(key, lockId);
+    }
+
     const active = this.locks.get(key);
     if (active && active.id === lockId) {
       this.locks.delete(key);
@@ -99,7 +137,7 @@ export class ApexLockEngine {
     try {
       return await fn();
     } finally {
-      this.release(key, lockId);
+      await this.release(key, lockId);
     }
   }
 

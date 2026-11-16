@@ -10,6 +10,49 @@ export interface RequestOptions {
   params?: Record<string, string>;
 }
 
+export interface RouteEndpoint<TResponse = any, TBody = any, TQuery = any> {
+  response: TResponse;
+  body?: TBody;
+  query?: TQuery;
+}
+
+export type InferRouteResponse<TRoute> = TRoute extends { response: infer R }
+  ? R
+  : TRoute extends (...args: any[]) => infer R
+    ? Awaited<R>
+    : any;
+
+export type InferRouteBody<TRoute> = TRoute extends { body: infer B }
+  ? B
+  : any;
+
+export type InferRouteQuery<TRoute> = TRoute extends { query: infer Q }
+  ? Q
+  : Record<string, any>;
+
+export type ApexRoutesDefinition = Record<string, any>;
+
+export type ClientMethod<TEndpoint> = (
+  options?: RequestOptions & {
+    body?: InferRouteBody<TEndpoint>;
+    query?: InferRouteQuery<TEndpoint>;
+  }
+) => Promise<InferRouteResponse<TEndpoint>>;
+
+export type TypedClient<TRoutes> = [TRoutes] extends [never]
+  ? ClientProxy
+  : [TRoutes] extends [any]
+    ? TRoutes extends Record<string, any>
+      ? {
+          [K in keyof TRoutes]: TRoutes[K] extends RouteEndpoint<any, any, any>
+            ? ClientMethod<TRoutes[K]>
+            : TRoutes[K] extends Record<string, any>
+              ? TypedClient<TRoutes[K]> & ((param: string | number) => TypedClient<TRoutes[K]>)
+              : any;
+        } & ClientProxy
+      : ClientProxy
+    : ClientProxy;
+
 export class ApexClientError extends Error {
   constructor(
     public status: number,
@@ -30,7 +73,7 @@ export type ClientProxy = {
 export function createApexClient<TRoutes = any>(
   baseUrl: string,
   options: ClientOptions = {}
-): ClientProxy {
+): TypedClient<TRoutes> {
   const fetchFn = options.fetch || globalThis.fetch;
   const cleanBase = baseUrl.replace(/\/+$/, "");
 
@@ -101,5 +144,5 @@ export function createApexClient<TRoutes = any>(
     });
   }
 
-  return buildProxy([]) as ClientProxy;
+  return buildProxy([]) as any as TypedClient<TRoutes>;
 }

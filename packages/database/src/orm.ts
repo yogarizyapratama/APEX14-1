@@ -16,6 +16,7 @@ export interface FindOptions<T = any> {
   limit?: number;
   offset?: number;
   select?: string[];
+  include?: string[] | string;
 }
 
 export class ModelQuery<T = any> {
@@ -26,10 +27,27 @@ export class ModelQuery<T = any> {
   private orderClauses: Array<{ field: string; direction: string }> = [];
   private limitCount?: number;
   private offsetCount?: number;
+  private includedRelations: string[] = [];
+  private modelInstance?: any;
 
   constructor(tableName: string, client: DatabaseClient) {
     this.tableName = tableName.replace(/[^a-zA-Z0-9_]/g, "");
     this.client = client;
+  }
+
+  public setModel(model: any): this {
+    this.modelInstance = model;
+    return this;
+  }
+
+  public include(...relations: (string | string[])[]): this {
+    const flat = relations.flat();
+    for (const r of flat) {
+      if (r && !this.includedRelations.includes(r)) {
+        this.includedRelations.push(r);
+      }
+    }
+    return this;
   }
 
   public select(...fields: string[]): this {
@@ -52,11 +70,18 @@ export class ModelQuery<T = any> {
       }
     } else if (typeof fieldOrObj === "string") {
       if (value === undefined) {
-        // e.g. .where("age", 25)
-        this.whereClauses.push({ field: fieldOrObj, operator: "=", value: operatorOrValue, boolean: "AND" });
+        if (Array.isArray(operatorOrValue)) {
+          this.whereClauses.push({ field: fieldOrObj, operator: "IN", value: operatorOrValue, boolean: "AND" });
+        } else {
+          this.whereClauses.push({ field: fieldOrObj, operator: "=", value: operatorOrValue, boolean: "AND" });
+        }
       } else {
-        // e.g. .where("age", ">=", 18)
-        this.whereClauses.push({ field: fieldOrObj, operator: operatorOrValue, value, boolean: "AND" });
+        const op = String(operatorOrValue).toUpperCase();
+        if (op === "IN") {
+          this.whereClauses.push({ field: fieldOrObj, operator: "IN", value: Array.isArray(value) ? value : [value], boolean: "AND" });
+        } else {
+          this.whereClauses.push({ field: fieldOrObj, operator: operatorOrValue, value, boolean: "AND" });
+        }
       }
     }
     return this;
@@ -64,9 +89,18 @@ export class ModelQuery<T = any> {
 
   public orWhere(field: string, operatorOrValue: any, value?: any): this {
     if (value === undefined) {
-      this.whereClauses.push({ field, operator: "=", value: operatorOrValue, boolean: "OR" });
+      if (Array.isArray(operatorOrValue)) {
+        this.whereClauses.push({ field, operator: "IN", value: operatorOrValue, boolean: "OR" });
+      } else {
+        this.whereClauses.push({ field, operator: "=", value: operatorOrValue, boolean: "OR" });
+      }
     } else {
-      this.whereClauses.push({ field, operator: operatorOrValue, value, boolean: "OR" });
+      const op = String(operatorOrValue).toUpperCase();
+      if (op === "IN") {
+        this.whereClauses.push({ field, operator: "IN", value: Array.isArray(value) ? value : [value], boolean: "OR" });
+      } else {
+        this.whereClauses.push({ field, operator: operatorOrValue, value, boolean: "OR" });
+      }
     }
     return this;
   }
@@ -91,7 +125,90 @@ export class ModelQuery<T = any> {
 
   public async get(): Promise<T[]> {
     const { sql, params } = this.buildSelectSql();
-    return await this.client.query<T>(sql, params);
+    const rows = await this.client.query<T>(sql, params);
+    if (rows.length === 0 || this.includedRelations.length === 0 || !this.modelInstance) {
+      return rows;
+    }
+    await this.loadRelations(rows);
+    return rows;
+  }
+
+  public async all(): Promise<T[]> {
+    return await this.get();
+  }
+
+  private async loadRelations(rows: any[]): Promise<void> {
+    for (const relName of this.includedRelations) {
+      const relDef = this.modelInstance.getRelation ? this.modelInstance.getRelation(relName) : undefined;
+      if (!relDef) continue;
+
+      const targetModel = typeof relDef.target === "function" && !relDef.target.tableName
+        ? relDef.target()
+        : relDef.target;
+
+      if (!targetModel) continue;
+      if (typeof targetModel.ensureTable === "function") {
+        await targetModel.ensureTable();
+      }
+
+      if (relDef.type === "hasMany") {
+        const localKey = relDef.localKey || "id";
+        const foreignKey = relDef.foreignKey || `${this.tableName.replace(/s$/, "")}_id`;
+
+        for (const row of rows) {
+          row[relName] = [];
+        }
+
+        const parentIds = Array.from(
+          new Set(rows.map((r) => r[localKey]).filter((id) => id !== undefined && id !== null))
+        );
+        if (parentIds.length === 0) continue;
+
+        // Single-query batching with WHERE foreignKey IN (...)
+        const relatedItems = await targetModel.where(foreignKey, parentIds).get();
+
+        const grouped = new Map<any, any[]>();
+        for (const item of relatedItems) {
+          const fVal = item[foreignKey];
+          let list = grouped.get(fVal);
+          if (!list) {
+            list = [];
+            grouped.set(fVal, list);
+          }
+          list.push(item);
+        }
+
+        for (const row of rows) {
+          const pVal = row[localKey];
+          row[relName] = grouped.get(pVal) || [];
+        }
+      } else if (relDef.type === "belongsTo") {
+        const localKey = relDef.localKey || "id";
+        const foreignKey = relDef.foreignKey || `${targetModel.tableName.replace(/s$/, "")}_id`;
+
+        for (const row of rows) {
+          row[relName] = null;
+        }
+
+        const foreignIds = Array.from(
+          new Set(rows.map((r) => r[foreignKey]).filter((id) => id !== undefined && id !== null))
+        );
+        if (foreignIds.length === 0) continue;
+
+        // Single-query batching with WHERE localKey IN (...)
+        const relatedItems = await targetModel.where(localKey, foreignIds).get();
+
+        const itemMap = new Map<any, any>();
+        for (const item of relatedItems) {
+          itemMap.set(item[localKey], item);
+        }
+
+        for (const row of rows) {
+          const fVal = row[foreignKey];
+          row[relName] = itemMap.get(fVal) || null;
+        }
+      }
+    }
   }
 
   public async first(): Promise<T | null> {
@@ -105,6 +222,7 @@ export class ModelQuery<T = any> {
   public async findMany(options: FindOptions<T> = {}): Promise<T[]> {
     if (options.where) this.where(options.where);
     if (options.select) this.select(...options.select);
+    if (options.include) this.include(options.include);
     if (options.limit !== undefined) this.limit(options.limit);
     if (options.offset !== undefined) this.offset(options.offset);
     if (options.orderBy) {

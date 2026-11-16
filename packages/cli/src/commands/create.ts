@@ -24,7 +24,7 @@ export async function createProject(options: CreateProjectOptions): Promise<stri
         start: "node dist/index.js"
       },
       dependencies: {
-        apex14: "^0.2.1"
+        apex14: "^0.3.0"
       },
       devDependencies: {
         "@types/node": "^22.10.1",
@@ -94,7 +94,7 @@ run(3000);
       test: "vitest run"
     },
     dependencies: {
-      apex14: "^0.2.1"
+      apex14: "^0.3.0"
     },
     devDependencies: {
       "@types/node": "^22.10.1",

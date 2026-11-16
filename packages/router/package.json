@@ -1,6 +1,6 @@
 {
   "name": "@apex14/router",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "High-performance radix-tree HTTP router for APEX14",
   "type": "module",
   "files": [
